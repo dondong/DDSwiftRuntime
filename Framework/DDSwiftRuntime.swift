@@ -9,26 +9,26 @@ import Foundation
 import MachO
 
 class DDSwiftRuntime {
-    static func getAllSwiftTypeList() -> [UnsafePointer<TypeContextDescriptor>] {
-        var list = [UnsafePointer<TypeContextDescriptor>]();
+    static func getAllSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] {
+        var list = [UnsafePointer<ContextDescriptor>]();
         for i in 0..<_dyld_image_count() {
             list.append(contentsOf:Self.getSwiftTypeList(i));
         }
         return list;
     }
     
-    static func getMainSwiftTypeList() -> [UnsafePointer<TypeContextDescriptor>] {
+    static func getMainSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] {
         for i in 0..<_dyld_image_count() {
             let header = _dyld_get_image_header(i);
             if (header!.pointee.filetype == MH_EXECUTE) {
                 return Self.getSwiftTypeList(i);
             }
         }
-        return [UnsafePointer<TypeContextDescriptor>]();
+        return [UnsafePointer<ContextDescriptor>]();
     }
     
-    static func getSwiftTypeList(_ imageIndex: UInt32) -> [UnsafePointer<TypeContextDescriptor>] {
-        var list = [UnsafePointer<TypeContextDescriptor>]();
+    static func getSwiftTypeList(_ imageIndex: UInt32) -> [UnsafePointer<ContextDescriptor>] {
+        var list = [UnsafePointer<ContextDescriptor>]();
         if (imageIndex < _dyld_image_count()) {
             let header = unsafeBitCast(_dyld_get_image_header(imageIndex), to:UnsafePointer<mach_header_64>.self);
             var size: UInt = 0;
@@ -37,7 +37,7 @@ class DDSwiftRuntime {
             size = size / UInt(MemoryLayout<RelativeDirectPointer>.size);
             for i in 0..<size {
                 guard let p = Self.getPointerFromRelativeDirectPointer(ptr.advanced(by:Int(i))) else { continue; }
-                let type = UnsafeMutablePointer<TypeContextDescriptor>(p);
+                let type = UnsafeMutablePointer<ContextDescriptor>(p);
                 list.append(type);
             }
         }

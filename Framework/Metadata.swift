@@ -215,7 +215,12 @@ struct ClassMetadata : ObjcClassInterface {
     let classAddressPoint: UInt32;
     let description: UnsafePointer<ClassDescriptor>;
     let ivarDestroyer: Pointer;
-    // functin list
+    // After this come the class members, laid out as follows:
+    //   - class members for the superclass (recursively)
+    //   - metadata reference for the parent, if applicable
+    //   - generic parameters for this class
+    //   - class variables (if we choose to support these)
+    //   - "tabulated" virtual methods
 };
 
 extension ClassMetadata {
@@ -241,10 +246,11 @@ extension ClassMetadata {
             return list;
         }
     }
-    // functionTable
-    var functionTable: UnsafeBufferPointer<OpaquePointer> { mutating get { return Self.getFunctionTable(&self); } }
-    static func getFunctionTable(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<OpaquePointer> {
-        let size = (cls.pointee.classSize - 80 - cls.pointee.classAddressPoint) / 8;
-        return UnsafeBufferPointer.init(start:UnsafePointer<OpaquePointer>.init(OpaquePointer(cls.advanced(by:1))), count:Int(size));
+    // virtual methods
+    var virtualMethods: UnsafeBufferPointer<OpaquePointer> { mutating get { return Self.getVirtualMethods(&self); } }
+    static func getVirtualMethods(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<OpaquePointer> {
+        let size = ClassDescriptor.getVTableSize(cls.pointee.description) + ClassDescriptor.getOverridetableSize(cls.pointee.description);
+        let ptr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:Int(cls.pointee.classSize) - Int(size) * MemoryLayout<uintptr_t>.size);
+        return UnsafeBufferPointer.init(start:UnsafePointer<OpaquePointer>(OpaquePointer(ptr)), count:Int(size));
     }
 }

@@ -19,7 +19,7 @@ enum ContextDescriptorKind : UInt8 {
     /// such as a function body.
     case Anonymous = 2;
     /// This context descriptor represents a protocol context.
-    case ProtocolType = 3;
+    case `Protocol` = 3;
     /// This context descriptor represents an opaque type alias.
     case OpaqueType = 4;
     /// First kind that represents a type of any sort.
@@ -193,13 +193,13 @@ struct TypeContextDescriptor : TypeContextDescriptorInterface {
 
 // MARK: -
 // MARK: Extension
-struct ExtensionContextDescriptor {
+struct ExtensionContextDescriptor : ContextDescriptorInterface {
     let flag: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
-    fileprivate let _name: RelativeDirectPointer;
-    fileprivate let _accessFunction: RelativeDirectPointer;
-    fileprivate let _fieldDescriptor: RelativeDirectPointer;
-    let extendedContext: RelativeDirectPointer;
+//    fileprivate let _name: RelativeDirectPointer;
+//    fileprivate let _accessFunction: RelativeDirectPointer;
+//    fileprivate let _fieldDescriptor: RelativeDirectPointer;
+    fileprivate let extendedContext: RelativeDirectPointer;
 }
 
 extension ExtensionContextDescriptor {
@@ -227,9 +227,6 @@ struct AnonymousContextDescriptor {
 struct OpaqueTypeDescriptor {
     let flag: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
-    fileprivate let _name: RelativeDirectPointer;
-    fileprivate let _accessFunction: RelativeDirectPointer;
-    fileprivate let _fieldDescriptor: RelativeDirectPointer;
     // GenericContextDescriptorHeader
     // RelativeDirectPointer<const char>
 }
@@ -329,15 +326,74 @@ struct ClassDescriptor : TypeContextDescriptorInterface {
 };
 
 extension ClassDescriptor {
-    fileprivate static func _getVtableOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
+    // typeGenericContextDescriptorHeader
+    var typeGenericContextDescriptorHeader: UnsafePointer<TypeGenericContextDescriptorHeader>? { mutating get { return Self.getTypeGenericContextDescriptorHeader(&self); } }
+    static func getTypeGenericContextDescriptorHeader(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<TypeGenericContextDescriptorHeader>? {
+        if (data.pointee.flag.isGeneric) {
+            return UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
+        } else {
+            return nil;
+        }
+    }
+    // genericParamDescriptor
+    var genericParamDescriptor: UnsafeBufferPointer<GenericParamDescriptor>? { mutating get { return Self.getGenericParamDescriptor(&self); } }
+    static func getGenericParamDescriptor(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<GenericParamDescriptor>? {
+        if (data.pointee.flag.isGeneric) {
+            let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
+            if (ptr.pointee.base.numParams > 0) {
+                return Optional(UnsafeBufferPointer(start:UnsafePointer<GenericParamDescriptor>(OpaquePointer(ptr.advanced(by:1))), count:Int(ptr.pointee.base.numParams)));
+            } else {
+                return nil;
+            }
+        } else {
+            return nil;
+        }
+    }
+    // ResilientSuperclass
+    fileprivate static func _getResilientSuperclassOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
         var offset = 0;
         if (data.pointee.flag.isGeneric) {
             let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
             offset = MemoryLayout<TypeGenericContextDescriptorHeader>.size + Int((ptr.pointee.base.numParams + 3) & ~UInt16(3)) + MemoryLayout<GenericRequirementDescriptor>.size * Int(ptr.pointee.base.numRequirements);
         }
+        return offset;
+    }
+    var resilientSuperclass: UnsafePointer<ResilientSuperclass>? { mutating get { return Self.getResilientSuperclass(&self); } }
+    static func getResilientSuperclass(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<ResilientSuperclass>? {
+        if (data.pointee.flag.hasVTable) {
+            return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getResilientSuperclassOffset(data)).assumingMemoryBound(to:ResilientSuperclass.self);
+        } else {
+            return nil;
+        }
+    }
+    // ForeignMetadataInitialization
+    fileprivate static func _getMetadataInitializationOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
+        var offset = Self._getResilientSuperclassOffset(data);
         if (data.pointee.flag.hasResilientSuperclass) {
             offset += MemoryLayout<ResilientSuperclass>.size;
         }
+        return offset;
+    }
+    var foreignMetadataInitialization: UnsafePointer<ForeignMetadataInitialization>? { mutating get { return Self.getForeignMetadataInitialization(&self); } }
+    static func getForeignMetadataInitialization(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
+        if (data.pointee.flag.hasVTable) {
+            return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getMetadataInitializationOffset(data)).assumingMemoryBound(to:ForeignMetadataInitialization.self);
+        } else {
+            return nil;
+        }
+    }
+    // SingletonMetadataInitialization
+    var singletonMetadataInitialization: UnsafePointer<SingletonMetadataInitialization>? { mutating get { return Self.getSingletonMetadataInitialization(&self); } }
+    static func getSingletonMetadataInitialization(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<SingletonMetadataInitialization>? {
+        if (data.pointee.flag.hasVTable) {
+            return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getMetadataInitializationOffset(data)).assumingMemoryBound(to:SingletonMetadataInitialization.self);
+        } else {
+            return nil;
+        }
+    }
+    // vtable
+    fileprivate static func _getVtableOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
+        var offset = Self._getMetadataInitializationOffset(data);
         switch(data.pointee.flag.metadataInitialization) {
         case .ForeignMetadataInitialization:
             offset += MemoryLayout<ForeignMetadataInitialization>.size;
@@ -348,7 +404,15 @@ extension ClassDescriptor {
         }
         return offset;
     }
-    // vtable
+    var vTableSize: UInt32 { mutating get { return Self.getVTableSize(&self); } }
+    static func getVTableSize(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
+        if (data.pointee.flag.hasVTable) {
+            let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getVtableOffset(data)).assumingMemoryBound(to:VTableDescriptorHeader.self);
+            return ptr.pointee.vTableSize;
+        } else {
+            return 0;
+        }
+    }
     var vtable: UnsafeBufferPointer<MethodDescriptor>? { mutating get { Self.getVTable(&self); } }
     static func getVTable(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<MethodDescriptor>? {
         if (data.pointee.flag.hasVTable) {
@@ -360,6 +424,7 @@ extension ClassDescriptor {
         }
     }
     
+    // overridetable
     fileprivate static func _getOverridetableOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
         var offset = self._getVtableOffset(data);
         if (data.pointee.flag.hasVTable) {
@@ -369,7 +434,15 @@ extension ClassDescriptor {
         }
         return offset;
     }
-    // overridetable
+    var overridetableSize: UInt32 { mutating get { return Self.getOverridetableSize(&self); } }
+    static func getOverridetableSize(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
+        if (data.pointee.flag.hasOverrideTable) {
+            let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getOverridetableOffset(data)).assumingMemoryBound(to:OverrideTableHeader.self);
+            return ptr.pointee.numEntries;
+        } else {
+            return 0;
+        }
+    }
     var overridetable: UnsafeBufferPointer<MethodOverrideDescriptor>? { mutating get { return Self.getOverridetable(&self); } }
     static func getOverridetable(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<MethodOverrideDescriptor>? {
         if (data.pointee.flag.hasOverrideTable) {
@@ -395,19 +468,108 @@ struct GenericContextDescriptorHeader {
     let numExtraArguments: UInt16;
 };
 
+extension GenericContextDescriptorHeader {
+    var numArguments: UInt32 { get { return UInt32(self.numKeyArguments + self.numExtraArguments); } }
+    var hasArguments: Bool { get { return self.numArguments > 0; } }
+}
+
+enum GenericParamKind : UInt8 {
+    case `Type` = 0;
+    case Max = 0x3F;
+}
+
+struct GenericParamDescriptor {
+    let value: UInt8;
+}
+
+extension GenericParamDescriptor {
+    var hasKeyArgument: Bool { get { return (self.value & 0x80) != 0; } }
+    var hasExtraArgument: Bool { get { return (self.value & 0x40) != 0; } }
+    var kind: GenericParamKind { get { return GenericParamKind(rawValue:self.value & 0x3F) ?? .Max; } }
+}
+
 /***
  * TypeGenericContextDescriptorHeader
  ***/
 struct TypeGenericContextDescriptorHeader {
-    let instantiationCache: RelativeDirectPointer;
-    let defaultInstantiationPattern: RelativeDirectPointer;
+    fileprivate let _instantiationCache: RelativeDirectPointer;
+    fileprivate let _defaultInstantiationPattern: RelativeDirectPointer;
     let base: GenericContextDescriptorHeader;
 };
+
+extension TypeGenericContextDescriptorHeader {
+    // instantiationCache
+    var instantiationCache: UnsafePointer<GenericMetadataInstantiationCache>? { mutating get { Self.getInstantiationCache(&self); } }
+    static func getInstantiationCache(_ data: UnsafePointer<TypeGenericContextDescriptorHeader>) -> UnsafePointer<GenericMetadataInstantiationCache>? {
+        if let ptr = DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data))) {
+            return Optional(UnsafePointer<GenericMetadataInstantiationCache>(ptr))
+        } else {
+            return nil;
+        }
+    }
+    // defaultInstantiationPattern
+    var defaultInstantiationPattern: UnsafePointer<GenericMetadataPattern>? { mutating get { return Self.getDefaultInstantiationPattern(&self); } }
+    static func getDefaultInstantiationPattern(_ data: UnsafePointer<TypeGenericContextDescriptorHeader>) -> UnsafePointer<GenericMetadataPattern>? {
+        if let ptr = DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:1)) {
+            return Optional(UnsafePointer<GenericMetadataPattern>(ptr))
+        } else {
+            return nil;
+        }
+    }
+}
+
+struct GenericMetadataInstantiationCache {
+    fileprivate let _privateData: OpaquePointer;
+}
+
+extension GenericMetadataInstantiationCache {
+    fileprivate static let NumGenericMetadataPrivateDataWords: Int = 16;
+    var privateData: UnsafeBufferPointer<OpaquePointer> { mutating get { return Self.getPrivateData(&self); } }
+    static func getPrivateData(_ data: UnsafePointer<GenericMetadataInstantiationCache>) -> UnsafeBufferPointer<OpaquePointer> {
+        return UnsafeBufferPointer(start:UnsafePointer<OpaquePointer>(OpaquePointer(data)), count:Self.NumGenericMetadataPrivateDataWords);
+    }
+}
+
+struct GenericMetadataPatternFlags {
+    fileprivate let _value: UInt32;
+}
+
+extension GenericMetadataPatternFlags {
+    fileprivate static let HasExtraDataPattern: UInt32 = 0;
+    fileprivate static let HasTrailingFlags: UInt32 = 1;
+    fileprivate static let Class_HasImmediateMembersPattern: UInt32 = 31;
+    fileprivate static let Value_MetadataKind: UInt32 = 21;
+    fileprivate static let Value_MetadataKind_width: UInt32 = 11;
+    var class_hasImmediateMembersPattern: Bool { get { return (self._value & (1 << Self.Class_HasImmediateMembersPattern)) != 0; } }
+    var hasExtraDataPattern: Bool { get { return (self._value & (1 << Self.HasExtraDataPattern)) != 0; } }
+    var hasTrailingFlags: Bool { get { return (self._value & (1 << Self.HasTrailingFlags)) != 0; } }
+    var value_getMetadataKind: MetadataKind { get { return MetadataKind(rawValue:(Self.Value_MetadataKind_width & (self._value >> Self.Value_MetadataKind))) ?? .Class; } }
+}
+
+struct GenericMetadataPattern {
+    fileprivate let _instantiationFunction: RelativeDirectPointer;
+    fileprivate let _completionFunction: RelativeDirectPointer;
+    let patternFlags: GenericMetadataPatternFlags;
+}
+
+extension GenericMetadataPattern {
+    // instantiationFunction
+    var instantiationFunction: OpaquePointer? { mutating get { return Self.getDefaultInstantiationPattern(&self); } }
+    static func getDefaultInstantiationPattern(_ data: UnsafePointer<GenericMetadataPattern>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)));
+    }
+    // completionFunction
+    var completionFunction: OpaquePointer? { mutating get { return Self.getCompletionFunction(&self); } }
+    static func getCompletionFunction(_ data: UnsafePointer<GenericMetadataPattern>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:1));
+    }
+    var hasExtraDataPattern: Bool { get { return self.patternFlags.hasExtraDataPattern; } }
+}
 
 // MARK: -
 // MARK: Append
 enum GenericRequirementKind : UInt8 {
-    case ProtocolDescriptor = 0;
+    case `Protocol` = 0;
     case SameType = 1;
     case BaseClass = 2;
     case SameConformance = 3;
@@ -510,7 +672,7 @@ extension GenericRequirementDescriptor {
         get {
             var ret: Bool = false;
             switch(self.kind) {
-            case .BaseClass, .Layout, .ProtocolDescriptor, .SameConformance, .SameType:
+            case .BaseClass, .Layout, .Protocol, .SameConformance, .SameType:
                 ret = true;
             default:
                 ret = false;
@@ -618,24 +780,109 @@ extension ProtocolConformanceDescriptor {
  * ResilientSuperclass
  ***/
 struct ResilientSuperclass {
-    let superclass: RelativeDirectPointer;
+    fileprivate let _superclass: RelativeDirectPointer;
 };
+
+extension ResilientSuperclass {
+    var superclass: OpaquePointer? { mutating get { return Self.getSuperclass(&self); } }
+    static func getSuperclass(_ data: UnsafePointer<ResilientSuperclass>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)));
+    }
+}
 
 /***
  * ForeignMetadataInitialization
  ***/
 struct ForeignMetadataInitialization {
   /// The completion function.  The pattern will always be null.
-    let completionFunction: RelativeDirectPointer;
+    fileprivate let _completionFunction: RelativeDirectPointer;
 };
+
+extension ResilientSuperclass {
+    var completionFunction: OpaquePointer? { mutating get { return Self.getCompletionFunction(&self); } }
+    static func getCompletionFunction(_ data: UnsafePointer<ResilientSuperclass>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)));
+    }
+}
+
+/***
+ * SingletonMetadataCache
+ ***/
+struct SingletonMetadataCache {
+    let metadata: OpaquePointer;
+    let `private`: OpaquePointer;
+}
+
+/***
+ * ResilientClassMetadataPattern
+ ***/
+struct ResilientClassMetadataPattern {
+    fileprivate let _relocationFunction: RelativeDirectPointer;
+    fileprivate let _destroy: RelativeDirectPointer;
+    fileprivate let _iVarDestroyer: RelativeDirectPointer;
+    let flags: ClassFlags;
+    fileprivate let _data: RelativeDirectPointer;
+    fileprivate let _metaclass: RelativeDirectPointer;
+}
+
+extension ResilientClassMetadataPattern {
+    // relocationFunction
+    var relocationFunction: OpaquePointer? { mutating get { return Self.getRelocationFunction(&self); } }
+    static func getRelocationFunction(_ data: UnsafePointer<ResilientClassMetadataPattern>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)));
+    }
+    // destroy
+    var destroy: OpaquePointer? { mutating get { return Self.getDestroy(&self); } }
+    static func getDestroy(_ data: UnsafePointer<ResilientClassMetadataPattern>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:1));
+    }
+    // iVarDestroyer
+    var iVarDestroyer: OpaquePointer? { mutating get { return Self.getIVarDestroyer(&self); } }
+    static func getIVarDestroyer(_ data: UnsafePointer<ResilientClassMetadataPattern>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2));
+    }
+    // data
+    var data: OpaquePointer? { mutating get { return Self.getData(&self); } }
+    static func getData(_ data: UnsafePointer<ResilientClassMetadataPattern>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:4));
+    }
+    // metaclass
+    var metaclass: UnsafePointer<AnyClassMetadata>? { mutating get { return Self.getMetaclass(&self); } }
+    static func getMetaclass(_ data: UnsafePointer<ResilientClassMetadataPattern>) -> UnsafePointer<AnyClassMetadata>? {
+        return UnsafePointer<AnyClassMetadata>(DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:5)));
+    }
+}
 
 /***
  * SingletonMetadataInitialization
  ***/
 struct SingletonMetadataInitialization {
-    let initializationCache: RelativeDirectPointer;
-    let incompleteMetadata: RelativeDirectPointer;  // resilientPattern: RelativeDirectPointer;
-    let completionFunction: RelativeDirectPointer;
+    fileprivate let _initializationCache: RelativeDirectPointer;
+    fileprivate let _incompleteMetadata: RelativeDirectPointer;  // resilientPattern: RelativeDirectPointer;
+    fileprivate let _completionFunction: RelativeDirectPointer;
+}
+
+extension SingletonMetadataInitialization {
+    // initializationCache
+    var initializationCache: UnsafePointer<SingletonMetadataCache>? { mutating get { return Self.getInitializationCache(&self); } }
+    static func getInitializationCache(_ data: UnsafePointer<SingletonMetadataInitialization>) -> UnsafePointer<SingletonMetadataCache>? {
+        return UnsafePointer<SingletonMetadataCache>(DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data))));
+    }
+    // incompleteMetadata
+    var incompleteMetadata: OpaquePointer? { mutating get { return Self.getIncompleteMetadata(&self); } }
+    static func getIncompleteMetadata(_ data: UnsafePointer<SingletonMetadataInitialization>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:1));
+    }
+    // resilientPattern
+    var resilientPattern: UnsafePointer<ResilientClassMetadataPattern>? { mutating get { return Self.getResilientPattern(&self); } }
+    static func getResilientPattern(_ data: UnsafePointer<SingletonMetadataInitialization>) -> UnsafePointer<ResilientClassMetadataPattern>? {
+        return UnsafePointer<ResilientClassMetadataPattern>(DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:1)));
+    }
+    // completionFunction
+    var completionFunction: OpaquePointer? { mutating get { return Self.getCompletionFunction(&self); } }
+    static func getCompletionFunction(_ data: UnsafePointer<SingletonMetadataInitialization>) -> OpaquePointer? {
+        return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2));
+    }
 }
 
 /***
