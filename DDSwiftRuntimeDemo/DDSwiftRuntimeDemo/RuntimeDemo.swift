@@ -19,18 +19,18 @@ func printAllType() {
 }
 
 func printClass() {
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
+        printSwift(metadata, "SwiftBaseClass");
+    }
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
+        printSwift(metadata, "SwiftClass");
+    }
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
+        printSwift(metadata, "SwiftChildClass");
+    }
     if let metadata = DDSwiftRuntime.getSwiftClass(Test.self) {
         printSwift(metadata, "Test");
     }
-//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
-//        printSwift(metadata, "SwiftBaseClass");
-//    }
-//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
-//        printSwift(metadata, "SwiftClass");
-//    }
-//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
-//        printSwift(metadata, "SwiftChildClass");
-//    }
 }
 
 fileprivate func printSwift(_ ptr: UnsafePointer<ClassMetadata>, _ clsName: String) {
@@ -39,24 +39,28 @@ fileprivate func printSwift(_ ptr: UnsafePointer<ClassMetadata>, _ clsName: Stri
     print("class name: ", clsName);
     print("***** ClassMetadata *****");
     print("address:", metadata);
-    print("objc name: ", metadata.pointee.name);
-    print("flags: ", metadata.pointee.flags);
-    print("instanceAddressPoint: ", metadata.pointee.instanceAddressPoint);
-    print("instanceSize: ", metadata.pointee.instanceSize);
-    print("instanceAlignMask: ", String(format:"%x", metadata.pointee.instanceAlignMask));
-    print("reserved: ", metadata.pointee.reserved);
-    print("classSize: ", metadata.pointee.classSize);
-    print("classAddressPoint: ", metadata.pointee.classAddressPoint);
-    print("description: ", metadata.pointee.description);
-    print("ivarDestroyer: ", metadata.pointee.ivarDestroyer);
+    print("objc name:", metadata.pointee.name);
+    print("objc isa:", metadata.pointee.isa);
+    print("objc supper:", metadata.pointee.superclass);
+    print("flags:", metadata.pointee.flags);
+    print("instanceAddressPoint:", metadata.pointee.instanceAddressPoint);
+    print("instanceSize:", metadata.pointee.instanceSize);
+    print("instanceAlignMask:", String(format:"%x", metadata.pointee.instanceAlignMask));
+    print("reserved:", metadata.pointee.reserved);
+    print("classSize:", metadata.pointee.classSize);
+    print("classAddressPoint:", metadata.pointee.classAddressPoint);
+    print("description:", metadata.pointee.description);
+    print("ivarDestroyer:", metadata.pointee.ivarDestroyer);
+    print("supperClass:", metadata.pointee.supperClass);
+    print("supperMetadata:", metadata.pointee.supperMetadata);
     print("function table:")
-//    let virtualMethods = metadata.pointee.virtualMethods;
-//    for i in 0..<virtualMethods.count {
+    let virtualMethods = metadata.pointee.virtualMethods;
+    for i in 0..<virtualMethods.count {
 //        var info = dl_info();
 //        dladdr(UnsafeRawPointer(virtualMethods[i]), &info);
 //        print("\(i).  name:", String(cString:info.dli_sname));
-//        print("    address:", virtualMethods[i]);
-//    }
+        print("    address:", virtualMethods[i]);
+    }
     
     print("***** ClassDescriptor *****");
     printClassDescriptor(metadata.pointee.description);
@@ -124,11 +128,25 @@ fileprivate func printClassDescriptor(_ d: UnsafePointer<ClassDescriptor>) {
             print("typeGenericContextDescriptorHeader defaultInstantiationPattern  completionFunction:", String(describing:def.pointee.completionFunction));
             print("typeGenericContextDescriptorHeader defaultInstantiationPattern  hasExtraDataPattern:", def.pointee.hasExtraDataPattern);
         }
-        if let param = des.pointee.genericParamDescriptor {
+        if let param = des.pointee.genericParamDescriptors {
             for i in 0..<param.count {
                 print("\(i).  typeGenericContextDescriptorHeader genericParamDescriptor:", param[i].kind);
             }
         }
+    }
+    if let r = des.pointee.resilientSuperclass {
+        let res = UnsafeMutablePointer<ResilientSuperclass>(OpaquePointer(r));
+        print("resilientSuperclass superclass:", String(describing:res.pointee.superclass));
+    }
+    if let f = des.pointee.foreignMetadataInitialization {
+        let fore = UnsafeMutablePointer<ForeignMetadataInitialization>(OpaquePointer(f));
+        print("foreignMetadataInitialization completionFunction:", String(describing:fore.pointee.completionFunction));
+    }
+    if let s = des.pointee.singletonMetadataInitialization {
+        let sin = UnsafeMutablePointer<SingletonMetadataInitialization>(OpaquePointer(s));
+        print("singletonMetadataInitialization initializationCache:", String(describing:sin.pointee.initializationCache));
+        print("singletonMetadataInitialization incompleteMetadata:", String(describing:sin.pointee.incompleteMetadata));
+        print("singletonMetadataInitialization completionFunction:", String(describing:sin.pointee.completionFunction));
     }
     if let table = des.pointee.vtable {
         print("vtable:");

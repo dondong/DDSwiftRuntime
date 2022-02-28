@@ -201,8 +201,8 @@ enum ClassFlags : UInt32 {
 }
 
 struct ClassMetadata : ObjcClassInterface {
-    fileprivate let _isa: OpaquePointer;
-    fileprivate let _superclass: OpaquePointer;
+    let isa: OpaquePointer;
+    let superclass: OpaquePointer;
     let cache0: uintptr_t;
     let cache1: uintptr_t;
     let ro: uintptr_t;
@@ -246,11 +246,27 @@ extension ClassMetadata {
             return list;
         }
     }
+    // var supper
+    var supperClass: OpaquePointer { mutating get { return Self.getSupperClass(&self); } }
+    static func getSupperClass(_ cls: UnsafePointer<ClassMetadata>) -> OpaquePointer {
+        return OpaquePointer(cls.advanced(by:1));
+    }
+    var supperMetadata: OpaquePointer { mutating get { return Self.getSupperMetadata(&self); } }
+    static func getSupperMetadata(_ cls: UnsafePointer<ClassMetadata>) -> OpaquePointer {
+        return OpaquePointer(UnsafePointer<uintptr_t>(OpaquePointer(cls.advanced(by:1))).advanced(by:1));
+    }
     // virtual methods
     var virtualMethods: UnsafeBufferPointer<OpaquePointer> { mutating get { return Self.getVirtualMethods(&self); } }
     static func getVirtualMethods(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<OpaquePointer> {
         let size = ClassDescriptor.getVTableSize(cls.pointee.description) + ClassDescriptor.getOverridetableSize(cls.pointee.description);
-        let ptr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:Int(cls.pointee.classSize) - Int(size) * MemoryLayout<uintptr_t>.size);
-        return UnsafeBufferPointer.init(start:UnsafePointer<OpaquePointer>(OpaquePointer(ptr)), count:Int(size));
+        let offset = MemoryLayout<ClassMetadata>.size + Int(cls.pointee.classAddressPoint) + Int(ClassDescriptor.getNumParams(cls.pointee.description)) * 16;
+        let ptr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:offset);
+        return UnsafeBufferPointer(start:UnsafePointer<OpaquePointer>(OpaquePointer(ptr)), count:Int(size));
+    }
+    
+    var valueWitnesses: UnsafePointer<ValueWitnessTable> { mutating get { return Self.getValueWitnesses(&self); } }
+    static func getValueWitnesses(_ cls: UnsafePointer<ClassMetadata>) -> UnsafePointer<ValueWitnessTable> {
+        let data = UnsafeMutablePointer<HeapMetadata>(OpaquePointer(cls));
+        return data.pointee.valueWitnesses;
     }
 }

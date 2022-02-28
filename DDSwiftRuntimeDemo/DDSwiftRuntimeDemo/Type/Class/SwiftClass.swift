@@ -51,6 +51,18 @@ class SwiftChildClass : SwiftBaseClass {
     }
 }
 
-class Test<T> {
-    var t: T?;
+protocol Testable {
+    func s();
+}
+
+class Test {
+//    var t: T?;
+//    var t2: T2?;
+    func ttt() {
+        print("ttt")
+    }
+    
+    func s() {
+        print("s")
+    }
 }

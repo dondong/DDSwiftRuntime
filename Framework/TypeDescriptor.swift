@@ -335,9 +335,17 @@ extension ClassDescriptor {
             return nil;
         }
     }
-    // genericParamDescriptor
-    var genericParamDescriptor: UnsafeBufferPointer<GenericParamDescriptor>? { mutating get { return Self.getGenericParamDescriptor(&self); } }
-    static func getGenericParamDescriptor(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<GenericParamDescriptor>? {
+    // genericParamDescriptors
+    var numParams: UInt32 { mutating get { return Self.getNumParams(&self); } }
+    static func getNumParams(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
+        if (data.pointee.flag.isGeneric) {
+            return UInt32(UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1))).pointee.base.numParams);
+        } else {
+            return 0;
+        }
+    }
+    var genericParamDescriptors: UnsafeBufferPointer<GenericParamDescriptor>? { mutating get { return Self.getGenericParamDescriptors(&self); } }
+    static func getGenericParamDescriptors(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<GenericParamDescriptor>? {
         if (data.pointee.flag.isGeneric) {
             let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
             if (ptr.pointee.base.numParams > 0) {
@@ -360,7 +368,7 @@ extension ClassDescriptor {
     }
     var resilientSuperclass: UnsafePointer<ResilientSuperclass>? { mutating get { return Self.getResilientSuperclass(&self); } }
     static func getResilientSuperclass(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<ResilientSuperclass>? {
-        if (data.pointee.flag.hasVTable) {
+        if (data.pointee.flag.hasResilientSuperclass) {
             return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getResilientSuperclassOffset(data)).assumingMemoryBound(to:ResilientSuperclass.self);
         } else {
             return nil;
@@ -376,7 +384,7 @@ extension ClassDescriptor {
     }
     var foreignMetadataInitialization: UnsafePointer<ForeignMetadataInitialization>? { mutating get { return Self.getForeignMetadataInitialization(&self); } }
     static func getForeignMetadataInitialization(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
-        if (data.pointee.flag.hasVTable) {
+        if (data.pointee.flag.metadataInitialization == .ForeignMetadataInitialization) {
             return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getMetadataInitializationOffset(data)).assumingMemoryBound(to:ForeignMetadataInitialization.self);
         } else {
             return nil;
@@ -385,7 +393,7 @@ extension ClassDescriptor {
     // SingletonMetadataInitialization
     var singletonMetadataInitialization: UnsafePointer<SingletonMetadataInitialization>? { mutating get { return Self.getSingletonMetadataInitialization(&self); } }
     static func getSingletonMetadataInitialization(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<SingletonMetadataInitialization>? {
-        if (data.pointee.flag.hasVTable) {
+        if (data.pointee.flag.metadataInitialization == .SingletonMetadataInitialization) {
             return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getMetadataInitializationOffset(data)).assumingMemoryBound(to:SingletonMetadataInitialization.self);
         } else {
             return nil;
@@ -798,9 +806,9 @@ struct ForeignMetadataInitialization {
     fileprivate let _completionFunction: RelativeDirectPointer;
 };
 
-extension ResilientSuperclass {
+extension ForeignMetadataInitialization {
     var completionFunction: OpaquePointer? { mutating get { return Self.getCompletionFunction(&self); } }
-    static func getCompletionFunction(_ data: UnsafePointer<ResilientSuperclass>) -> OpaquePointer? {
+    static func getCompletionFunction(_ data: UnsafePointer<ForeignMetadataInitialization>) -> OpaquePointer? {
         return DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)));
     }
 }
