@@ -19,17 +19,33 @@ func printAllType() {
 }
 
 func printClass() {
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
-        printSwift(metadata, "SwiftBaseClass");
-    }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
-        printSwift(metadata, "SwiftClass");
-    }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
-        printSwift(metadata, "SwiftChildClass");
-    }
     if let metadata = DDSwiftRuntime.getSwiftClass(Test.self) {
         printSwift(metadata, "Test");
+        let witnesses = ClassMetadata.getValueWitnesses(metadata);
+        print(witnesses);
+        let existential = ClassMetadata.getExistentialTypeMetadata(metadata);
+        print(existential);
+    }
+//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
+//        printSwift(metadata, "SwiftBaseClass");
+//    }
+//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
+//        printSwift(metadata, "SwiftClass");
+//    }
+//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
+//        printSwift(metadata, "SwiftChildClass");
+//    }
+}
+
+func printGenericClass() {
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericBaseClass<String>.self) {
+        printSwift(metadata, "SwiftGenericBaseClass");
+    }
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericClass<Float, Int>.self) {
+        printSwift(metadata, "SwiftGenericClass");
+    }
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericChildClass.self) {
+        printSwift(metadata, "SwiftGenericChildClass");
     }
 }
 
@@ -51,14 +67,12 @@ fileprivate func printSwift(_ ptr: UnsafePointer<ClassMetadata>, _ clsName: Stri
     print("classAddressPoint:", metadata.pointee.classAddressPoint);
     print("description:", metadata.pointee.description);
     print("ivarDestroyer:", metadata.pointee.ivarDestroyer);
-    print("supperClass:", metadata.pointee.supperClass);
-    print("supperMetadata:", metadata.pointee.supperMetadata);
     print("function table:")
     let virtualMethods = metadata.pointee.virtualMethods;
     for i in 0..<virtualMethods.count {
-//        var info = dl_info();
-//        dladdr(UnsafeRawPointer(virtualMethods[i]), &info);
-//        print("\(i).  name:", String(cString:info.dli_sname));
+        var info = dl_info();
+        dladdr(UnsafeRawPointer(virtualMethods[i]), &info);
+        print("\(i).  name:", String(cString:info.dli_sname));
         print("    address:", virtualMethods[i]);
     }
     

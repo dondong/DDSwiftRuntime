@@ -48,7 +48,7 @@ extension MetadataKind {
  * ValueWitnessFlags
  ***/
 struct ValueWitnessFlags {
-    let data: UInt32;
+    fileprivate let _value: UInt32;
 }
 
 extension ValueWitnessFlags {
@@ -60,13 +60,13 @@ extension ValueWitnessFlags {
     fileprivate static let HasEnumWitnesses: UInt32    = 0x00200000;
     fileprivate static let Incomplete: UInt32          = 0x00400000;
     
-    var alignmentMask: UInt32 { get { return self.data & ValueWitnessFlags.AlignmentMask; } }
+    var alignmentMask: UInt32 { get { return self._value & ValueWitnessFlags.AlignmentMask; } }
     var alignment: UInt32 { get { return self.alignmentMask + 1; } }
-    var isInlineStorage: Bool { get { return (self.data & ValueWitnessFlags.IsNonBitwiseTakable) == 0; } }
-    var isPOD: Bool { get { return (self.data & ValueWitnessFlags.IsNonPOD) == 0; } }
-    var isBitwiseTakable: Bool { get { return (self.data & ValueWitnessFlags.IsNonBitwiseTakable) == 0; } }
-    var hasEnumWitnesses: Bool { get { return (self.data & ValueWitnessFlags.HasEnumWitnesses) != 0; } }
-    var isIncomplete: Bool { get { return (self.data & ValueWitnessFlags.Incomplete) == 0; } }
+    var isInlineStorage: Bool { get { return (self._value & ValueWitnessFlags.IsNonBitwiseTakable) == 0; } }
+    var isPOD: Bool { get { return (self._value & ValueWitnessFlags.IsNonPOD) == 0; } }
+    var isBitwiseTakable: Bool { get { return (self._value & ValueWitnessFlags.IsNonBitwiseTakable) == 0; } }
+    var hasEnumWitnesses: Bool { get { return (self._value & ValueWitnessFlags.HasEnumWitnesses) != 0; } }
+    var isIncomplete: Bool { get { return (self._value & ValueWitnessFlags.Incomplete) == 0; } }
 }
 
 /***
@@ -97,6 +97,43 @@ extension ValueWitnessTable {
     var isBitwiseTakable: Bool { get { self.flags.isBitwiseTakable; } }
     var alignment: UInt32 { get { self.flags.alignment; } }
     var alignmentMask: UInt32 { get { self.flags.alignmentMask; } }
+}
+
+/***
+ * ExistentialTypeMetadata
+ ***/
+enum ProtocolClassConstraint : UInt8 {
+    case Class = 0;
+    case `Any` = 1;
+}
+
+enum SpecialProtocol : UInt8 {
+    case None = 0;
+    case Error = 1;
+}
+
+struct ExistentialTypeFlags{
+    fileprivate let _value: UInt32;
+}
+
+extension ExistentialTypeFlags {
+    fileprivate static let numWitnessTablesMask: UInt32 = 0x00FFFFFF;
+    fileprivate static let classConstraintMask: UInt32 = 0x80000000;
+    fileprivate static let hasSuperclassMask: UInt32 = 0x40000000;
+    fileprivate static let specialProtocolMask: UInt32 = 0x3F000000;
+    fileprivate static let specialProtocolShift: UInt32 = 24;
+    var numWitnessTables: UInt32 { get { return self._value & Self.numWitnessTablesMask; } }
+    var classConstraint: ProtocolClassConstraint { get { return ProtocolClassConstraint(rawValue:(self._value & Self.classConstraintMask) != 0 ? 1 : 0) ?? .Any; } }
+    var hasSuperclassConstraint: Bool { get { return (self._value & Self.hasSuperclassMask) != 0; } }
+    var specialProtocol: SpecialProtocol { get { return SpecialProtocol(rawValue:UInt8((self._value & Self.specialProtocolMask) >> Self.specialProtocolShift)) ?? .Error; } }
+}
+
+struct ExistentialTypeMetadata {
+    let kind: OpaquePointer;
+    let flags: ExistentialTypeFlags;
+    let numProtocols: UInt32;
+    // ConstTargetMetadataPointer
+    // ProtocolDescriptorRef
 }
 
 /***
@@ -246,27 +283,24 @@ extension ClassMetadata {
             return list;
         }
     }
-    // var supper
-    var supperClass: OpaquePointer { mutating get { return Self.getSupperClass(&self); } }
-    static func getSupperClass(_ cls: UnsafePointer<ClassMetadata>) -> OpaquePointer {
-        return OpaquePointer(cls.advanced(by:1));
-    }
-    var supperMetadata: OpaquePointer { mutating get { return Self.getSupperMetadata(&self); } }
-    static func getSupperMetadata(_ cls: UnsafePointer<ClassMetadata>) -> OpaquePointer {
-        return OpaquePointer(UnsafePointer<uintptr_t>(OpaquePointer(cls.advanced(by:1))).advanced(by:1));
-    }
     // virtual methods
     var virtualMethods: UnsafeBufferPointer<OpaquePointer> { mutating get { return Self.getVirtualMethods(&self); } }
     static func getVirtualMethods(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<OpaquePointer> {
-        let size = ClassDescriptor.getVTableSize(cls.pointee.description) + ClassDescriptor.getOverridetableSize(cls.pointee.description);
-        let offset = MemoryLayout<ClassMetadata>.size + Int(cls.pointee.classAddressPoint) + Int(ClassDescriptor.getNumParams(cls.pointee.description)) * 16;
-        let ptr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:offset);
-        return UnsafeBufferPointer(start:UnsafePointer<OpaquePointer>(OpaquePointer(ptr)), count:Int(size));
+        let offset = MemoryLayout<ClassMetadata>.size + Int(ClassDescriptor.getNumParams(cls.pointee.description)) * 8;
+        let size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
+        let bastPtr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:offset);
+        return UnsafeBufferPointer(start:UnsafePointer<OpaquePointer>(OpaquePointer(bastPtr)), count:size);
     }
-    
+    // valueWitnesses
     var valueWitnesses: UnsafePointer<ValueWitnessTable> { mutating get { return Self.getValueWitnesses(&self); } }
     static func getValueWitnesses(_ cls: UnsafePointer<ClassMetadata>) -> UnsafePointer<ValueWitnessTable> {
-        let data = UnsafeMutablePointer<HeapMetadata>(OpaquePointer(cls));
-        return data.pointee.valueWitnesses;
+        let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(cls)).advanced(by:-1);
+        return UnsafePointer<ValueWitnessTable>(ptr.pointee);
+    }
+    // existentialTypeMetadata
+    var existentialTypeMetadata: UnsafePointer<ExistentialTypeMetadata> { mutating get { return Self.getExistentialTypeMetadata(&self); } }
+    static func getExistentialTypeMetadata(_ cls: UnsafePointer<ClassMetadata>) -> UnsafePointer<ExistentialTypeMetadata> {
+        let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(cls)).advanced(by:-2);
+        return UnsafePointer<ExistentialTypeMetadata>(ptr.pointee);
     }
 }

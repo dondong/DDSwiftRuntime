@@ -13,7 +13,6 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         self.view.backgroundColor = .white;
-//        getAllType();
         // all type
         let typeButton = UIButton(frame:CGRect(x:(self.view.frame.width - 150) * 0.5, y:100, width:150, height:44));
         typeButton.backgroundColor = .darkGray;
@@ -26,6 +25,12 @@ class ViewController: UIViewController {
         classButton.setTitle("test class", for:.normal);
         classButton.addTarget(self, action:#selector(testClass), for:.touchUpInside);
         self.view.addSubview(classButton);
+        // generic class
+        let genericClassButton = UIButton(frame:CGRect(x:(self.view.frame.width - 150) * 0.5, y:300, width:150, height:44));
+        genericClassButton.backgroundColor = .darkGray;
+        genericClassButton.setTitle("test generic class", for:.normal);
+        genericClassButton.addTarget(self, action:#selector(testGenericClass), for:.touchUpInside);
+        self.view.addSubview(genericClassButton);
     }
     
     @objc func getAllType() {
@@ -34,6 +39,10 @@ class ViewController: UIViewController {
 
     @objc func testClass() {
         printClass();
+    }
+    
+    @objc func testGenericClass() {
+        printGenericClass();
     }
 }
 

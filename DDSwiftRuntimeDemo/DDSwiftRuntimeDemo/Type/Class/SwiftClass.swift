@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 class SwiftBaseClass {
     func test() {
         print("SwiftBaseClass test");
@@ -39,7 +38,7 @@ class SwiftClass : SwiftBaseClass {
     }
 }
 
-class SwiftChildClass : SwiftBaseClass {
+class SwiftChildClass : SwiftClass {
     override func test() {
         super.test();
         print("SwiftChildClass test");
@@ -51,18 +50,14 @@ class SwiftChildClass : SwiftBaseClass {
     }
 }
 
+
 protocol Testable {
-    func s();
+}
+protocol Testable1 {
 }
 
-class Test {
-//    var t: T?;
-//    var t2: T2?;
-    func ttt() {
-        print("ttt")
-    }
-    
-    func s() {
-        print("s")
+class Test : Testable{
+    func test() {
+        
     }
 }

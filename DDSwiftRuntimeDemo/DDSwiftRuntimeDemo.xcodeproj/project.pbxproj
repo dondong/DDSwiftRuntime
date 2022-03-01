@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A32CA85D27CE247B009B9F34 /* SwiftGenericClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32CA85C27CE247B009B9F34 /* SwiftGenericClass.swift */; };
 		A3BBD9D027CB7B1B00BACFED /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9CF27CB7B1B00BACFED /* AppDelegate.swift */; };
 		A3BBD9D227CB7B1B00BACFED /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9D127CB7B1B00BACFED /* SceneDelegate.swift */; };
 		A3BBD9D427CB7B1B00BACFED /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9D327CB7B1B00BACFED /* ViewController.swift */; };
@@ -22,6 +23,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A32CA85C27CE247B009B9F34 /* SwiftGenericClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftGenericClass.swift; sourceTree = "<group>"; };
 		A3BBD9CC27CB7B1B00BACFED /* DDSwiftRuntimeDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DDSwiftRuntimeDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3BBD9CF27CB7B1B00BACFED /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A3BBD9D127CB7B1B00BACFED /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */,
+				A32CA85C27CE247B009B9F34 /* SwiftGenericClass.swift */,
 				A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */,
 			);
 			path = Class;
@@ -201,6 +204,7 @@
 				A3BBD9F127CB9CC000BACFED /* SwiftClass.swift in Sources */,
 				A3BBD9D427CB7B1B00BACFED /* ViewController.swift in Sources */,
 				A3BBD9D027CB7B1B00BACFED /* AppDelegate.swift in Sources */,
+				A32CA85D27CE247B009B9F34 /* SwiftGenericClass.swift in Sources */,
 				A3BBD9E827CB7B2B00BACFED /* TypeDescriptor.swift in Sources */,
 				A3BBD9E727CB7B2B00BACFED /* Metadata.swift in Sources */,
 				A3BBD9E927CB7B2B00BACFED /* DDSwiftRuntime.swift in Sources */,
