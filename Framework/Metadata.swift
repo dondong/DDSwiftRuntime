@@ -99,16 +99,6 @@ extension ValueWitnessTable {
 /***
  * ExistentialTypeMetadata
  ***/
-enum ProtocolClassConstraint : UInt8 {
-    case Class = 0;
-    case `Any` = 1;
-}
-
-enum SpecialProtocol : UInt8 {
-    case None = 0;
-    case Error = 1;
-}
-
 struct ExistentialTypeFlags{
     fileprivate let _value: UInt32;
 }

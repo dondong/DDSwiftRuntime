@@ -15,7 +15,7 @@
 		A3BBD9D927CB7B1C00BACFED /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A3BBD9D827CB7B1C00BACFED /* Assets.xcassets */; };
 		A3BBD9DC27CB7B1C00BACFED /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A3BBD9DA27CB7B1C00BACFED /* LaunchScreen.storyboard */; };
 		A3BBD9E727CB7B2B00BACFED /* Metadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9E427CB7B2B00BACFED /* Metadata.swift */; };
-		A3BBD9E827CB7B2B00BACFED /* TypeDescriptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9E527CB7B2B00BACFED /* TypeDescriptor.swift */; };
+		A3BBD9E827CB7B2B00BACFED /* Descriptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9E527CB7B2B00BACFED /* Descriptor.swift */; };
 		A3BBD9E927CB7B2B00BACFED /* DDSwiftRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9E627CB7B2B00BACFED /* DDSwiftRuntime.swift */; };
 		A3BBD9F127CB9CC000BACFED /* SwiftClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */; };
 		A3BBD9F327CB9CD100BACFED /* ObjcClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */; };
@@ -34,7 +34,7 @@
 		A3BBD9DB27CB7B1C00BACFED /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A3BBD9DD27CB7B1C00BACFED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3BBD9E427CB7B2B00BACFED /* Metadata.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Metadata.swift; sourceTree = "<group>"; };
-		A3BBD9E527CB7B2B00BACFED /* TypeDescriptor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TypeDescriptor.swift; sourceTree = "<group>"; };
+		A3BBD9E527CB7B2B00BACFED /* Descriptor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Descriptor.swift; sourceTree = "<group>"; };
 		A3BBD9E627CB7B2B00BACFED /* DDSwiftRuntime.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DDSwiftRuntime.swift; sourceTree = "<group>"; };
 		A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftClass.swift; sourceTree = "<group>"; };
 		A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjcClass.swift; sourceTree = "<group>"; };
@@ -90,7 +90,7 @@
 			isa = PBXGroup;
 			children = (
 				A3BBD9E427CB7B2B00BACFED /* Metadata.swift */,
-				A3BBD9E527CB7B2B00BACFED /* TypeDescriptor.swift */,
+				A3BBD9E527CB7B2B00BACFED /* Descriptor.swift */,
 				A3BBD9E627CB7B2B00BACFED /* DDSwiftRuntime.swift */,
 				A3BF5D7C27CF7CFA00AFF2CD /* Value.swift */,
 			);
@@ -209,7 +209,7 @@
 				A3BBD9D427CB7B1B00BACFED /* ViewController.swift in Sources */,
 				A3BBD9D027CB7B1B00BACFED /* AppDelegate.swift in Sources */,
 				A32CA85D27CE247B009B9F34 /* SwiftGenericClass.swift in Sources */,
-				A3BBD9E827CB7B2B00BACFED /* TypeDescriptor.swift in Sources */,
+				A3BBD9E827CB7B2B00BACFED /* Descriptor.swift in Sources */,
 				A3BBD9E727CB7B2B00BACFED /* Metadata.swift in Sources */,
 				A3BBD9E927CB7B2B00BACFED /* DDSwiftRuntime.swift in Sources */,
 				A3BBD9F327CB9CD100BACFED /* ObjcClass.swift in Sources */,

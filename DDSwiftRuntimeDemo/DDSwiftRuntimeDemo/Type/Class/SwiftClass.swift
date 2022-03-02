@@ -52,12 +52,29 @@ class SwiftChildClass : SwiftClass {
 
 
 protocol Testable {
+    func test();
+    func test222();
 }
 protocol Testable1 {
 }
 
-class Test : Testable{
+class Test : Testable {
     func test() {
         
+    }
+    func test222() {
+        
+    }
+}
+
+class Test2 : Testable{
+    func test() {
+        print("Test2");
+    }
+    func test2() {
+        
+    }
+    func test222() {
+        print("test222");
     }
 }

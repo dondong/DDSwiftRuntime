@@ -1,5 +1,5 @@
 //
-//  TypeDescriptor.swift
+//  Descriptor.swift
 //  DDSwiftRuntime
 //
 //  Created by dondong on 2022/2/25.
@@ -78,7 +78,7 @@ extension ContextDescriptorFlags {
  * ContextDescriptor
  ***/
 protocol ContextDescriptorInterface {
-    var flag: ContextDescriptorFlags { get };
+    var flags: ContextDescriptorFlags { get };
 }
 
 extension ContextDescriptorInterface {
@@ -91,32 +91,86 @@ extension ContextDescriptorInterface {
 }
 
 struct ContextDescriptor : ContextDescriptorInterface {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate var _parent: RelativeDirectPointer;
 }
 
 /***
  * Protocol
  ***/
+enum ProtocolClassConstraint : UInt8 {
+    case Class = 0;
+    case `Any` = 1;
+}
+
+enum SpecialProtocol : UInt8 {
+    case None = 0;
+    case Error = 1;
+}
+
+struct ProtocolContextDescriptorFlags {
+    fileprivate var _value: UInt16;
+    init(_ val: UInt16) {
+        self._value = val;
+    }
+}
+
+extension ProtocolContextDescriptorFlags {
+    fileprivate static let HasClassConstraint: UInt16 = 0;
+    fileprivate static let HasClassConstraint_width: UInt16 = 1;
+    fileprivate static let IsResilient: UInt16 = 1;
+    fileprivate static let SpecialProtocolKind: UInt16 = 2;
+    fileprivate static let SpecialProtocolKind_width: UInt16 = 6;
+    var classConstraint: ProtocolClassConstraint { get { return ProtocolClassConstraint(rawValue:UInt8((self._value >> Self.HasClassConstraint) & Self.HasClassConstraint_width)) ?? .Class; } }
+    var specialProtocol: SpecialProtocol { get { return SpecialProtocol(rawValue:UInt8((self._value >> Self.SpecialProtocolKind) & Self.SpecialProtocolKind_width)) ?? .None; } }
+}
+
 struct ProtocolDescriptor : ContextDescriptorInterface {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
-    fileprivate let _name: RelativeDirectPointer;
+    fileprivate var _name: RelativeDirectPointer;
     let numRequirementsInSignature: UInt32;
     let numRequirements: UInt32;
-    let associatedTypeNames: RelativeDirectPointer
+    fileprivate let _associatedTypeNames: RelativeDirectPointer
     // GenericRequirementDescriptor
     // ProtocolRequirement
 }
 
 extension ProtocolDescriptor {
+    // protocolContextDescriptorFlags
+    var protocolContextDescriptorFlags: ProtocolContextDescriptorFlags { get { return ProtocolContextDescriptorFlags(self.flags.kindSpecificFlags); } }
+    // name
     var name: String { mutating get { return Self.getName(&self); } }
     static func getName(_ data: UnsafePointer<ProtocolDescriptor>) -> String {
-        let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2).pointee.pointer!;
+        let ptr = UnsafeMutablePointer<ProtocolDescriptor>(mutating:data).pointee._name.pointer!;
         let namePtr = UnsafePointer<CChar>(ptr);
         guard let parent = self.getParent(data) else { return String(cString:namePtr) }
         let preName = self.getName(UnsafePointer<ProtocolDescriptor>(OpaquePointer(parent)));
         return String(preName + "." + String(cString:namePtr));
+    }
+    var associatedTypeNames: String? { mutating get { return Self.getAssociatedTypeNames(&self); } }
+    static func getAssociatedTypeNames(_ data: UnsafePointer<ProtocolDescriptor>) -> String? {
+        if let ptr = UnsafeMutablePointer<ProtocolDescriptor>(mutating:data).pointee._name.pointer {
+            return String(cString:UnsafePointer<CChar>(ptr))
+        } else {
+            return nil;
+        }
+    }
+    // requirementSignature
+    var requirementSignature: UnsafeBufferPointer<GenericRequirementDescriptor> { mutating get { return Self.getRequirementSignature(&self); } }
+    static func getRequirementSignature(_ data: UnsafePointer<ProtocolDescriptor>) -> UnsafeBufferPointer<GenericRequirementDescriptor> {
+        let ptr = UnsafePointer<GenericRequirementDescriptor>(OpaquePointer(data.advanced(by:1)));
+        return UnsafeBufferPointer<GenericRequirementDescriptor>(start:ptr, count:Int(data.pointee.numRequirementsInSignature));
+    }
+    //
+    fileprivate static func _getRequirementSignatureOffset(_ data: UnsafePointer<ProtocolDescriptor>) -> Int {
+        return MemoryLayout<GenericRequirementDescriptor>.size * Int(data.pointee.numRequirementsInSignature);
+    }
+    var requirements: UnsafeBufferPointer<ProtocolRequirement> { mutating get { return Self.getRequirements(&self); } }
+    static func getRequirements(_ data: UnsafePointer<ProtocolDescriptor>) -> UnsafeBufferPointer<ProtocolRequirement> {
+        let offset = Self._getRequirementSignatureOffset(data);
+        let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:ProtocolRequirement.self);
+        return UnsafeBufferPointer<ProtocolRequirement>(start:ptr, count:Int(data.pointee.numRequirements));
     }
 }
 enum ProtocolRequirementKind : UInt32 {
@@ -150,7 +204,18 @@ extension ProtocolRequirementFlags {
 
 struct ProtocolRequirement {
     let flags: ProtocolRequirementFlags;
-    let defaultImplementation: RelativeDirectPointer;
+    fileprivate var _defaultImplementation: RelativeDirectPointer;
+}
+
+extension ProtocolRequirement {
+    var defaultImplementation: FunctionPointer? { mutating get { return Self.getDefaultImplementation(&self); } }
+    static func getDefaultImplementation(_ data: UnsafePointer<ProtocolRequirement>) -> FunctionPointer? {
+        if let ptr = UnsafeMutablePointer<ProtocolRequirement>(mutating:data).pointee._defaultImplementation.pointer {
+            return Optional(FunctionPointer(ptr));
+        } else {
+            return nil;
+        }
+    }
 }
 
 // MARK: -
@@ -192,7 +257,7 @@ extension TypeContextDescriptorInterface {
 }
 
 struct TypeContextDescriptor : TypeContextDescriptorInterface {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
     fileprivate let _name: RelativeDirectPointer;
     fileprivate let _accessFunction: RelativeDirectPointer;
@@ -202,7 +267,7 @@ struct TypeContextDescriptor : TypeContextDescriptorInterface {
 // MARK: -
 // MARK: Extension
 struct ExtensionContextDescriptor : ContextDescriptorInterface {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
     fileprivate var _extendedContext: RelativeDirectPointer;
 }
@@ -218,7 +283,7 @@ extension ExtensionContextDescriptor {
 // MARK: -
 // MARK: Anonymous
 struct AnonymousContextDescriptor {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
     fileprivate let _name: RelativeDirectPointer;
     fileprivate let _accessFunction: RelativeDirectPointer;
@@ -230,7 +295,7 @@ struct AnonymousContextDescriptor {
 // MARK: -
 // MARK: OpaqueType
 struct OpaqueTypeDescriptor {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
     // GenericContextDescriptorHeader
     // RelativeDirectPointer<const char>
@@ -243,17 +308,17 @@ protocol ValueTypeDescriptorInterface : TypeContextDescriptorInterface {
 
 extension ValueTypeDescriptorInterface {
     static func classof(descriptor: TypeContextDescriptor) -> Bool {
-        return (descriptor.flag.kind == .Struct || descriptor.flag.kind == .Enum);
+        return (descriptor.flags.kind == .Struct || descriptor.flags.kind == .Enum);
     }
     static func classof(descriptor: UnsafePointer<TypeContextDescriptor>) -> Bool {
-        return (descriptor.pointee.flag.kind == .Struct || descriptor.pointee.flag.kind == .Enum);
+        return (descriptor.pointee.flags.kind == .Struct || descriptor.pointee.flags.kind == .Enum);
     }
 }
 /***
  * StructDescriptor
  ***/
 struct StructDescriptor : ValueTypeDescriptorInterface {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
     fileprivate let _name: RelativeDirectPointer;
     fileprivate let _accessFunction: RelativeDirectPointer;
@@ -278,7 +343,7 @@ extension StructDescriptor {
  * EnumDescriptor
  ***/
 struct EnumDescriptor : ValueTypeDescriptorInterface {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
     fileprivate let _name: RelativeDirectPointer;
     fileprivate let _accessFunction: RelativeDirectPointer;
@@ -304,7 +369,7 @@ extension EnumDescriptor {
  * ClassDescriptor
  ***/
 struct ClassDescriptor : TypeContextDescriptorInterface {
-    let flag: ContextDescriptorFlags;
+    let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
     fileprivate let _name: RelativeDirectPointer;
     fileprivate let _accessFunction: RelativeDirectPointer;
@@ -334,7 +399,7 @@ extension ClassDescriptor {
     // typeGenericContextDescriptorHeader
     var typeGenericContextDescriptorHeader: UnsafePointer<TypeGenericContextDescriptorHeader>? { mutating get { return Self.getTypeGenericContextDescriptorHeader(&self); } }
     static func getTypeGenericContextDescriptorHeader(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<TypeGenericContextDescriptorHeader>? {
-        if (data.pointee.flag.isGeneric) {
+        if (data.pointee.flags.isGeneric) {
             return UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
         } else {
             return nil;
@@ -343,7 +408,7 @@ extension ClassDescriptor {
     // genericParamDescriptors
     var numParams: UInt32 { mutating get { return Self.getNumParams(&self); } }
     static func getNumParams(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
-        if (data.pointee.flag.isGeneric) {
+        if (data.pointee.flags.isGeneric) {
             return UInt32(UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1))).pointee.base.numParams);
         } else {
             return 0;
@@ -351,7 +416,7 @@ extension ClassDescriptor {
     }
     var genericParamDescriptors: UnsafeBufferPointer<GenericParamDescriptor>? { mutating get { return Self.getGenericParamDescriptors(&self); } }
     static func getGenericParamDescriptors(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<GenericParamDescriptor>? {
-        if (data.pointee.flag.isGeneric) {
+        if (data.pointee.flags.isGeneric) {
             let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
             if (ptr.pointee.base.numParams > 0) {
                 return Optional(UnsafeBufferPointer(start:UnsafePointer<GenericParamDescriptor>(OpaquePointer(ptr.advanced(by:1))), count:Int(ptr.pointee.base.numParams)));
@@ -365,7 +430,7 @@ extension ClassDescriptor {
     // ResilientSuperclass
     fileprivate static func _getResilientSuperclassOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
         var offset = 0;
-        if (data.pointee.flag.isGeneric) {
+        if (data.pointee.flags.isGeneric) {
             let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
             offset = MemoryLayout<TypeGenericContextDescriptorHeader>.size + Int((ptr.pointee.base.numParams + 3) & ~UInt16(3)) + MemoryLayout<GenericRequirementDescriptor>.size * Int(ptr.pointee.base.numRequirements);
         }
@@ -373,7 +438,7 @@ extension ClassDescriptor {
     }
     var resilientSuperclass: UnsafePointer<ResilientSuperclass>? { mutating get { return Self.getResilientSuperclass(&self); } }
     static func getResilientSuperclass(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<ResilientSuperclass>? {
-        if (data.pointee.flag.hasResilientSuperclass) {
+        if (data.pointee.flags.hasResilientSuperclass) {
             return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getResilientSuperclassOffset(data)).assumingMemoryBound(to:ResilientSuperclass.self);
         } else {
             return nil;
@@ -382,14 +447,14 @@ extension ClassDescriptor {
     // ForeignMetadataInitialization
     fileprivate static func _getMetadataInitializationOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
         var offset = Self._getResilientSuperclassOffset(data);
-        if (data.pointee.flag.hasResilientSuperclass) {
+        if (data.pointee.flags.hasResilientSuperclass) {
             offset += MemoryLayout<ResilientSuperclass>.size;
         }
         return offset;
     }
     var foreignMetadataInitialization: UnsafePointer<ForeignMetadataInitialization>? { mutating get { return Self.getForeignMetadataInitialization(&self); } }
     static func getForeignMetadataInitialization(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
-        if (data.pointee.flag.metadataInitialization == .ForeignMetadataInitialization) {
+        if (data.pointee.flags.metadataInitialization == .ForeignMetadataInitialization) {
             return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getMetadataInitializationOffset(data)).assumingMemoryBound(to:ForeignMetadataInitialization.self);
         } else {
             return nil;
@@ -398,7 +463,7 @@ extension ClassDescriptor {
     // SingletonMetadataInitialization
     var singletonMetadataInitialization: UnsafePointer<SingletonMetadataInitialization>? { mutating get { return Self.getSingletonMetadataInitialization(&self); } }
     static func getSingletonMetadataInitialization(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<SingletonMetadataInitialization>? {
-        if (data.pointee.flag.metadataInitialization == .SingletonMetadataInitialization) {
+        if (data.pointee.flags.metadataInitialization == .SingletonMetadataInitialization) {
             return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getMetadataInitializationOffset(data)).assumingMemoryBound(to:SingletonMetadataInitialization.self);
         } else {
             return nil;
@@ -407,7 +472,7 @@ extension ClassDescriptor {
     // vtable
     fileprivate static func _getVtableOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
         var offset = Self._getMetadataInitializationOffset(data);
-        switch(data.pointee.flag.metadataInitialization) {
+        switch(data.pointee.flags.metadataInitialization) {
         case .ForeignMetadataInitialization:
             offset += MemoryLayout<ForeignMetadataInitialization>.size;
         case .SingletonMetadataInitialization:
@@ -419,7 +484,7 @@ extension ClassDescriptor {
     }
     var vTableSize: UInt32 { mutating get { return Self.getVTableSize(&self); } }
     static func getVTableSize(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
-        if (data.pointee.flag.hasVTable) {
+        if (data.pointee.flags.hasVTable) {
             let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getVtableOffset(data)).assumingMemoryBound(to:VTableDescriptorHeader.self);
             return ptr.pointee.vTableSize;
         } else {
@@ -428,7 +493,7 @@ extension ClassDescriptor {
     }
     var vtable: UnsafeBufferPointer<MethodDescriptor>? { mutating get { Self.getVTable(&self); } }
     static func getVTable(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<MethodDescriptor>? {
-        if (data.pointee.flag.hasVTable) {
+        if (data.pointee.flags.hasVTable) {
             let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getVtableOffset(data)).assumingMemoryBound(to:VTableDescriptorHeader.self);
             let buffer = UnsafeBufferPointer(start:UnsafePointer<MethodDescriptor>(OpaquePointer(ptr.advanced(by:1))), count:Int(ptr.pointee.vTableSize));
             return Optional(buffer);
@@ -440,7 +505,7 @@ extension ClassDescriptor {
     // overridetable
     fileprivate static func _getOverridetableOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
         var offset = self._getVtableOffset(data);
-        if (data.pointee.flag.hasVTable) {
+        if (data.pointee.flags.hasVTable) {
             let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:VTableDescriptorHeader.self);
             offset += MemoryLayout<VTableDescriptorHeader>.size;
             offset += MemoryLayout<MethodDescriptor>.size * Int(ptr.pointee.vTableSize);
@@ -449,7 +514,7 @@ extension ClassDescriptor {
     }
     var overridetableSize: UInt32 { mutating get { return Self.getOverridetableSize(&self); } }
     static func getOverridetableSize(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
-        if (data.pointee.flag.hasOverrideTable) {
+        if (data.pointee.flags.hasOverrideTable) {
             let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getOverridetableOffset(data)).assumingMemoryBound(to:OverrideTableHeader.self);
             return ptr.pointee.numEntries;
         } else {
@@ -458,7 +523,7 @@ extension ClassDescriptor {
     }
     var overridetable: UnsafeBufferPointer<MethodOverrideDescriptor>? { mutating get { return Self.getOverridetable(&self); } }
     static func getOverridetable(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<MethodOverrideDescriptor>? {
-        if (data.pointee.flag.hasOverrideTable) {
+        if (data.pointee.flags.hasOverrideTable) {
             let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getOverridetableOffset(data)).assumingMemoryBound(to:OverrideTableHeader.self);
             let buffer = UnsafeBufferPointer(start:UnsafePointer<MethodOverrideDescriptor>(OpaquePointer(ptr.advanced(by:1))), count:Int(ptr.pointee.numEntries));
             return Optional(buffer);
@@ -751,7 +816,7 @@ extension GenericWitnessTable {
     var privateData: UnsafeBufferPointer<FunctionPointer> { mutating get { return Self.getPrivateData(&self); } }
     static func getPrivateData(_ data: UnsafePointer<GenericWitnessTable>) -> UnsafeBufferPointer<FunctionPointer> {
         let ptr = UnsafeMutablePointer<GenericWitnessTable>(mutating:data).pointee._privateData.pointer!;
-        let size = (data.pointee.requiresInstantiation != 0 ? data.pointee.witnessTableSizeInWords : data.pointee.witnessTableSizeInWords);
+        let size = (data.pointee.requiresInstantiation != 0 ? data.pointee.witnessTablePrivateSizeInWords : data.pointee.witnessTableSizeInWords);
         return UnsafeBufferPointer<FunctionPointer>(start:UnsafePointer<FunctionPointer>(ptr), count:Int(size));
     }
 }
@@ -863,6 +928,15 @@ extension ProtocolConformanceDescriptor {
     static func getWitnessTablePattern(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> UnsafePointer<WitnessTable>? {
         if let ptr = UnsafeMutablePointer<ProtocolConformanceDescriptor>(mutating:data).pointee._witnessTablePattern.pointer {
             return Optional(UnsafePointer<WitnessTable>(ptr));
+        } else {
+            return nil;
+        }
+    }
+    var vtable: UnsafeBufferPointer<FunctionPointer>? { mutating get { return Self.getVtable(&self); } }
+    static func getVtable(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> UnsafeBufferPointer<FunctionPointer>? {
+        if let ptr = UnsafePointer<FunctionPointer>(OpaquePointer(Self.getWitnessTablePattern(data)?.advanced(by:1))) {
+            let size = Self.getProtocolDescriptor(data).pointee.numRequirements;
+            return UnsafeBufferPointer<FunctionPointer>(start:ptr, count:Int(size));
         } else {
             return nil;
         }

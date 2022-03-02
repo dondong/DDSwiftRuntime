@@ -22,8 +22,7 @@ func printAllType() {
         print("type index:", i);
         let pro = list[i];
         printProtocolConformanceDescriptor(pro);
-    }
-}
+    }}
 
 func printClass() {
     if let metadata = DDSwiftRuntime.getSwiftClass(Test.self) {
@@ -84,7 +83,7 @@ fileprivate func printClassMetadata(_ ptr: UnsafePointer<ClassMetadata>, _ clsNa
 }
 
 fileprivate func printDescriptor(_ des: UnsafePointer<ContextDescriptor>) {
-    switch(des.pointee.flag.kind) {
+    switch(des.pointee.flags.kind) {
     case .Class:
         printClassDescriptor(UnsafePointer<ClassDescriptor>(OpaquePointer(des)));
     case .Enum:
@@ -110,6 +109,12 @@ fileprivate func printProtocolConformanceDescriptor(_ d: UnsafePointer<ProtocolC
     print("flags kind:", des.pointee.flags.typeReferenceKind);
     print("protocolDescriptor:", des.pointee.protocolDescriptor, ProtocolDescriptor.getName(des.pointee.protocolDescriptor));
     print("witnessTablePattern:", des.pointee.witnessTablePattern ?? "");
+    if let table = des.pointee.vtable {
+        print("vtable");
+        for i in 0..<table.count {
+            print("\(i) ", table.baseAddress?.advanced(by:i), table[i].functionName);
+        }
+    }
     if let name = des.pointee.directObjCClassName {
         print("directObjCClassName:", name);
     }
@@ -119,11 +124,11 @@ fileprivate func printProtocolConformanceDescriptor(_ d: UnsafePointer<ProtocolC
     }
     if let type = des.pointee.typeDescriptor {
         print("typeDescriptor");
-        printTypeContextDescriptor(UnsafePointer<TypeContextDescriptor>(OpaquePointer(type)));
+        printDescriptor(type);
     }
     if let ret = des.pointee.retroactiveContext {
         print("retroactiveContext");
-        print("kind:", ret.pointee.flag.kind);
+        print("kind:", ret.pointee.flags.kind);
     }
     if let con = des.pointee.conditionalRequirements {
         print("conditionalRequirements");
@@ -136,6 +141,7 @@ fileprivate func printProtocolConformanceDescriptor(_ d: UnsafePointer<ProtocolC
         for i in 0..<res.count {
             let p = UnsafeMutablePointer<ResilientWitness>(mutating:res.baseAddress!.advanced(by:i));
             print("\(i) requirement:", p.pointee.requirement, "witness:",  p.pointee.witness);
+            print(FunctionPointer(p.pointee.witness).functionName)
         }
     }
     if let g = des.pointee.genericWitnessTable {
@@ -151,23 +157,23 @@ fileprivate func printProtocolConformanceDescriptor(_ d: UnsafePointer<ProtocolC
 
 fileprivate func printContextDescriptor(_ d: UnsafePointer<ContextDescriptor>) {
     let des = UnsafeMutablePointer<ContextDescriptor>(OpaquePointer(d));
-    print("kind:", des.pointee.flag.kind);
+    print("kind:", des.pointee.flags.kind);
     print("address:", des);
     print("parent:", String(describing:des.pointee.parent));
-    print("version:", des.pointee.flag.version);
-    print("isGeneric:", des.pointee.flag.isGeneric);
-    print("isUnique:", des.pointee.flag.isUnique);
-    print("metadataInitialization:", des.pointee.flag.metadataInitialization);
-    print("hasResilientSuperclass:", des.pointee.flag.hasResilientSuperclass);
-    print("hasVTable:", des.pointee.flag.hasVTable);
+    print("version:", des.pointee.flags.version);
+    print("isGeneric:", des.pointee.flags.isGeneric);
+    print("isUnique:", des.pointee.flags.isUnique);
+    print("metadataInitialization:", des.pointee.flags.metadataInitialization);
+    print("hasResilientSuperclass:", des.pointee.flags.hasResilientSuperclass);
+    print("hasVTable:", des.pointee.flags.hasVTable);
 }
 
 fileprivate func printTypeContextDescriptor(_ d: UnsafePointer<TypeContextDescriptor>) {
     printContextDescriptor(UnsafePointer<ContextDescriptor>(OpaquePointer(d)));
     let des = UnsafeMutablePointer<TypeContextDescriptor>(OpaquePointer(d));
     print("name:", des.pointee.name);
-    print("accessFunction:", String(describing:des.pointee.accessFunction));
-    print("fieldDescriptor:", String(describing:des.pointee.fieldDescriptor));
+    print("accessFunction:", String(describing:des.pointee.accessFunction?.functionName));
+    print("fieldDescriptor:", String(describing:des.pointee.fieldDescriptor?.functionName));
 }
 
 fileprivate func printClassDescriptor(_ d: UnsafePointer<ClassDescriptor>) {
@@ -250,11 +256,26 @@ fileprivate func printStructDescriptor(_ d: UnsafePointer<StructDescriptor>) {
 
 fileprivate func printProtocolDescriptor(_ d: UnsafePointer<ProtocolDescriptor>) {
     printContextDescriptor(UnsafePointer<ContextDescriptor>(OpaquePointer(d)));
-    let des = UnsafeMutablePointer<ProtocolDescriptor>(OpaquePointer(d));
+    let des = UnsafeMutablePointer<ProtocolDescriptor>(mutating:d);
     print("name:", des.pointee.name);
     print("numRequirementsInSignature:", des.pointee.numRequirementsInSignature);
     print("numRequirements:", des.pointee.numRequirements);
-    print("associatedTypeNames:", des.pointee.associatedTypeNames);
+    print("associatedTypeNames:", des.pointee.associatedTypeNames ?? "");
+    if (des.pointee.numRequirementsInSignature > 0) {
+        print("numRequirementsInSignature");
+        let req = des.pointee.requirementSignature;
+        for i in 0..<req.count {
+            print("\(i)  kind:", req[i].kind);
+        }
+    }
+    if (des.pointee.numRequirements > 0) {
+        print("numRequirements");
+        let req = des.pointee.requirements;
+        for i in 0..<req.count {
+            let p = UnsafeMutablePointer<ProtocolRequirement>(mutating:req.baseAddress!.advanced(by:i));
+            print("\(i)  defaultImplementation:", p.pointee.defaultImplementation?.functionName ?? "nil");
+        }
+    }
 }
 
 fileprivate func printExtensionContextDescriptor(_ d: UnsafePointer<ExtensionContextDescriptor>) {
