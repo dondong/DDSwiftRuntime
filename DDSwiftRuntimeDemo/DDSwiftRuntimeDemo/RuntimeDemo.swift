@@ -9,47 +9,50 @@ import Foundation
 import Darwin
 
 func printAllType() {
-    let list = DDSwiftRuntime.getMainSwiftTypeList();
+//    let list = DDSwiftRuntime.getMainSwiftTypeList();
+//    for i in 0..<list.count {
+//        print("***********************************************");
+//        print("type index:", i);
+//        printDescriptor(list[i]);
+//        print("");
+//    }
+    let list = DDSwiftRuntime.getMainSwiftProtocolConformanceList();
     for i in 0..<list.count {
         print("***********************************************");
         print("type index:", i);
-        printDescriptor(list[i]);
-        print("");
+        let pro = list[i];
+        printProtocolConformanceDescriptor(pro);
     }
 }
 
 func printClass() {
     if let metadata = DDSwiftRuntime.getSwiftClass(Test.self) {
-        printSwift(metadata, "Test");
-        let witnesses = ClassMetadata.getValueWitnesses(metadata);
-        print(witnesses);
-        let existential = ClassMetadata.getExistentialTypeMetadata(metadata);
-        print(existential);
+        printClassMetadata(metadata, "Test");
     }
 //    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
-//        printSwift(metadata, "SwiftBaseClass");
+//        printClassMetadata(metadata, "SwiftBaseClass");
 //    }
 //    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
-//        printSwift(metadata, "SwiftClass");
+//        printClassMetadata(metadata, "SwiftClass");
 //    }
 //    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
-//        printSwift(metadata, "SwiftChildClass");
+//        printClassMetadata(metadata, "SwiftChildClass");
 //    }
 }
 
 func printGenericClass() {
     if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericBaseClass<String>.self) {
-        printSwift(metadata, "SwiftGenericBaseClass");
+        printClassMetadata(metadata, "SwiftGenericBaseClass");
     }
     if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericClass<Float, Int>.self) {
-        printSwift(metadata, "SwiftGenericClass");
+        printClassMetadata(metadata, "SwiftGenericClass");
     }
     if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericChildClass.self) {
-        printSwift(metadata, "SwiftGenericChildClass");
+        printClassMetadata(metadata, "SwiftGenericChildClass");
     }
 }
 
-fileprivate func printSwift(_ ptr: UnsafePointer<ClassMetadata>, _ clsName: String) {
+fileprivate func printClassMetadata(_ ptr: UnsafePointer<ClassMetadata>, _ clsName: String) {
     let metadata = UnsafeMutablePointer<ClassMetadata>(OpaquePointer(ptr));
     print("***********************************************");
     print("class name: ", clsName);
@@ -70,9 +73,7 @@ fileprivate func printSwift(_ ptr: UnsafePointer<ClassMetadata>, _ clsName: Stri
     print("function table:")
     let virtualMethods = metadata.pointee.virtualMethods;
     for i in 0..<virtualMethods.count {
-        var info = dl_info();
-        dladdr(UnsafeRawPointer(virtualMethods[i]), &info);
-        print("\(i).  name:", String(cString:info.dli_sname));
+        print("\(i).  name:", virtualMethods[i].functionName);
         print("    address:", virtualMethods[i]);
     }
     
@@ -100,6 +101,51 @@ fileprivate func printDescriptor(_ des: UnsafePointer<ContextDescriptor>) {
         printOpaqueTypeDescriptor(UnsafePointer<OpaqueTypeDescriptor>(OpaquePointer(des)));
     default:
         break;
+    }
+}
+
+fileprivate func printProtocolConformanceDescriptor(_ d: UnsafePointer<ProtocolConformanceDescriptor>) {
+    let des = UnsafeMutablePointer<ProtocolConformanceDescriptor>(mutating:d);
+    print("address:", des);
+    print("flags kind:", des.pointee.flags.typeReferenceKind);
+    print("protocolDescriptor:", des.pointee.protocolDescriptor, ProtocolDescriptor.getName(des.pointee.protocolDescriptor));
+    print("witnessTablePattern:", des.pointee.witnessTablePattern ?? "");
+    if let name = des.pointee.directObjCClassName {
+        print("directObjCClassName:", name);
+    }
+    if let metadata = des.pointee.indirectObjCClass {
+        print("indirectObjCClass");
+        printClassMetadata(metadata, "ProtocolConformanceDescriptor");
+    }
+    if let type = des.pointee.typeDescriptor {
+        print("typeDescriptor");
+        printTypeContextDescriptor(UnsafePointer<TypeContextDescriptor>(OpaquePointer(type)));
+    }
+    if let ret = des.pointee.retroactiveContext {
+        print("retroactiveContext");
+        print("kind:", ret.pointee.flag.kind);
+    }
+    if let con = des.pointee.conditionalRequirements {
+        print("conditionalRequirements");
+        for i in 0..<con.count {
+            print("\(i) kind:", con[i].flags.kind);
+        }
+    }
+    if let res = des.pointee.resilientWitnesses {
+        print("resilientWitnesses");
+        for i in 0..<res.count {
+            let p = UnsafeMutablePointer<ResilientWitness>(mutating:res.baseAddress!.advanced(by:i));
+            print("\(i) requirement:", p.pointee.requirement, "witness:",  p.pointee.witness);
+        }
+    }
+    if let g = des.pointee.genericWitnessTable {
+        print("genericWitnessTable");
+        let gen = UnsafeMutablePointer<GenericWitnessTable>(mutating:g);
+        print("witnessTablePrivateSizeInWords:", gen.pointee.privateData.count);
+        let ptr = gen.pointee.privateData;
+        for i in 0..<ptr.count {
+            print("\(i) address:", ptr[i], "name:", ptr[i].functionName);
+        }
     }
 }
 
@@ -166,13 +212,11 @@ fileprivate func printClassDescriptor(_ d: UnsafePointer<ClassDescriptor>) {
         print("vtable:");
         for i in 0..<table.count {
             let item = UnsafeMutablePointer<MethodDescriptor>(OpaquePointer(table.baseAddress!.advanced(by:i)));
-            var info = dl_info();
-            dladdr(UnsafeRawPointer(item), &info);
             print("\(i).  kind:", item.pointee.flags.kind);
             print("    isAsync:", item.pointee.flags.isAsync);
             print("    isDynamic:", item.pointee.flags.isDynamic);
             print("    isInstance:", item.pointee.flags.isInstance);
-            print("    name:", String(cString:info.dli_sname));
+            print("    name:", item.pointee.impl.functionName);
             print("    address:", item.pointee.impl);
         }
     }
@@ -180,15 +224,11 @@ fileprivate func printClassDescriptor(_ d: UnsafePointer<ClassDescriptor>) {
         print("overridetable:");
         for i in 0..<table.count {
             let item = UnsafeMutablePointer<MethodOverrideDescriptor>(OpaquePointer(table.baseAddress!.advanced(by:i)));
-            var methodInfo = dl_info();
-            dladdr(UnsafeRawPointer(item.pointee.method), &methodInfo);
-            var implInfo = dl_info();
-            dladdr(UnsafeRawPointer(item.pointee.impl), &implInfo);
             print("\(i).  type_name:", TypeContextDescriptor.getName(UnsafePointer<TypeContextDescriptor>(item.pointee.cls)));
             print("    type_address:", item.pointee.cls);
-            print("    base_name:", String(cString:methodInfo.dli_sname));
+            print("    base_name:", item.pointee.method.functionName);
             print("    base_address:", item.pointee.method);
-            print("    override_name:", String(cString:implInfo.dli_sname));
+            print("    override_name:", item.pointee.impl.functionName);
             print("    override_address:", item.pointee.impl);
         }
     }

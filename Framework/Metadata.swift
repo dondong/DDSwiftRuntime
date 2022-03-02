@@ -7,9 +7,6 @@
 
 import Foundation
 
-typealias RelativeContextPointer=Int32
-typealias RelativeDirectPointer=Int32
-typealias Pointer=uintptr_t
 // MARK: -
 // MARK: HeapObject
 /***
@@ -284,12 +281,12 @@ extension ClassMetadata {
         }
     }
     // virtual methods
-    var virtualMethods: UnsafeBufferPointer<OpaquePointer> { mutating get { return Self.getVirtualMethods(&self); } }
-    static func getVirtualMethods(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<OpaquePointer> {
+    var virtualMethods: UnsafeBufferPointer<FunctionPointer> { mutating get { return Self.getVirtualMethods(&self); } }
+    static func getVirtualMethods(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<FunctionPointer> {
         let offset = MemoryLayout<ClassMetadata>.size + Int(ClassDescriptor.getNumParams(cls.pointee.description)) * 8;
         let size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
         let bastPtr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:offset);
-        return UnsafeBufferPointer(start:UnsafePointer<OpaquePointer>(OpaquePointer(bastPtr)), count:size);
+        return UnsafeBufferPointer(start:UnsafePointer<FunctionPointer>(OpaquePointer(bastPtr)), count:size);
     }
     // valueWitnesses
     var valueWitnesses: UnsafePointer<ValueWitnessTable> { mutating get { return Self.getValueWitnesses(&self); } }
@@ -297,10 +294,10 @@ extension ClassMetadata {
         let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(cls)).advanced(by:-1);
         return UnsafePointer<ValueWitnessTable>(ptr.pointee);
     }
-    // existentialTypeMetadata
-    var existentialTypeMetadata: UnsafePointer<ExistentialTypeMetadata> { mutating get { return Self.getExistentialTypeMetadata(&self); } }
-    static func getExistentialTypeMetadata(_ cls: UnsafePointer<ClassMetadata>) -> UnsafePointer<ExistentialTypeMetadata> {
+    // destroy
+    var destroy: UnsafePointer<FunctionPointer> { mutating get { return Self.getDestroy(&self); } }
+    static func getDestroy(_ cls: UnsafePointer<ClassMetadata>) -> UnsafePointer<FunctionPointer> {
         let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(cls)).advanced(by:-2);
-        return UnsafePointer<ExistentialTypeMetadata>(ptr.pointee);
+        return UnsafePointer<FunctionPointer>(ptr.pointee);
     }
 }

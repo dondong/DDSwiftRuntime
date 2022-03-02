@@ -20,6 +20,7 @@
 		A3BBD9F127CB9CC000BACFED /* SwiftClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */; };
 		A3BBD9F327CB9CD100BACFED /* ObjcClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */; };
 		A3BBD9F527CB9E9B00BACFED /* RuntimeDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F427CB9E9B00BACFED /* RuntimeDemo.swift */; };
+		A3BF5D7D27CF7CFA00AFF2CD /* Value.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BF5D7C27CF7CFA00AFF2CD /* Value.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftClass.swift; sourceTree = "<group>"; };
 		A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjcClass.swift; sourceTree = "<group>"; };
 		A3BBD9F427CB9E9B00BACFED /* RuntimeDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeDemo.swift; sourceTree = "<group>"; };
+		A3BF5D7C27CF7CFA00AFF2CD /* Value.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Value.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,6 +92,7 @@
 				A3BBD9E427CB7B2B00BACFED /* Metadata.swift */,
 				A3BBD9E527CB7B2B00BACFED /* TypeDescriptor.swift */,
 				A3BBD9E627CB7B2B00BACFED /* DDSwiftRuntime.swift */,
+				A3BF5D7C27CF7CFA00AFF2CD /* Value.swift */,
 			);
 			name = Framework;
 			path = ../../Framework;
@@ -202,6 +205,7 @@
 			files = (
 				A3BBD9F527CB9E9B00BACFED /* RuntimeDemo.swift in Sources */,
 				A3BBD9F127CB9CC000BACFED /* SwiftClass.swift in Sources */,
+				A3BF5D7D27CF7CFA00AFF2CD /* Value.swift in Sources */,
 				A3BBD9D427CB7B1B00BACFED /* ViewController.swift in Sources */,
 				A3BBD9D027CB7B1B00BACFED /* AppDelegate.swift in Sources */,
 				A32CA85D27CE247B009B9F34 /* SwiftGenericClass.swift in Sources */,

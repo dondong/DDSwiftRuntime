@@ -7,42 +7,71 @@
 
 import Foundation
 import MachO
+import Darwin
+import UIKit
+
 
 class DDSwiftRuntime {
-    static func getAllSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] {
-        var list = [UnsafePointer<ContextDescriptor>]();
+    static func getAllSwiftList<T>() -> [UnsafePointer<T>] {
+        var list = [UnsafePointer<T>]();
         for i in 0..<_dyld_image_count() {
-            list.append(contentsOf:Self.getSwiftTypeList(i));
+            list.append(contentsOf:Self.getSwiftList(i));
         }
         return list;
     }
     
-    static func getMainSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] {
+    static func getMainSwiftList<T>() -> [UnsafePointer<T>] {
         for i in 0..<_dyld_image_count() {
             let header = _dyld_get_image_header(i);
             if (header!.pointee.filetype == MH_EXECUTE) {
-                return Self.getSwiftTypeList(i);
+                return Self.getSwiftList(i);
             }
         }
-        return [UnsafePointer<ContextDescriptor>]();
+        return [UnsafePointer<T>]();
     }
     
-    static func getSwiftTypeList(_ imageIndex: UInt32) -> [UnsafePointer<ContextDescriptor>] {
-        var list = [UnsafePointer<ContextDescriptor>]();
+    static func getSwiftList<T>(_ imageIndex: UInt32) -> [UnsafePointer<T>] {
+        var segname = "";
+        var sectname = "";
+        if (T.self == ContextDescriptor.self) {
+            segname = "__TEXT";
+            sectname = "__swift5_types";
+        } else if (T.self == ProtocolConformanceDescriptor.self) {
+            segname = "__TEXT";
+            sectname = "__swift5_proto";
+        } else if (T.self == ProtocolDescriptor.self) {
+            segname = "__TEXT";
+            sectname = "__swift5_protos";
+        } else {
+            return [UnsafePointer<T>]();
+        }
+        var list = [UnsafePointer<T>]();
         if (imageIndex < _dyld_image_count()) {
             let header = unsafeBitCast(_dyld_get_image_header(imageIndex), to:UnsafePointer<mach_header_64>.self);
             var size: UInt = 0;
-            guard let sect = getsectiondata(header, "__TEXT", "__swift5_types", &size) else { return list; }
+            guard let sect = getsectiondata(header, segname, sectname, &size) else { return list; }
             let ptr = UnsafePointer<RelativeDirectPointer>(OpaquePointer(sect));
             size = size / UInt(MemoryLayout<RelativeDirectPointer>.size);
             for i in 0..<size {
-                guard let p = Self.getPointerFromRelativeDirectPointer(ptr.advanced(by:Int(i))) else { continue; }
-                let type = UnsafeMutablePointer<ContextDescriptor>(p);
+                guard let p = RelativeDirectPointer.getPointer(ptr.advanced(by:Int(i))) else { continue; }
+                let type = UnsafeMutablePointer<T>(p);
                 list.append(type);
             }
         }
         return list;
     }
+    // type
+    static func getAllSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self.getAllSwiftList(); }
+    static func getMainSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self.getMainSwiftList(); }
+    static func getSwiftTypeList(_ imageIndex: UInt32) -> [UnsafePointer<ContextDescriptor>] { return Self.getSwiftList(imageIndex); }
+    // protocol conformance
+    static func getAllSwiftProtocolConformanceList() -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self.getAllSwiftList(); }
+    static func getMainSwiftProtocolConformanceList() -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self.getMainSwiftList(); }
+    static func getSwiftProtocolConformanceList(_ imageIndex: UInt32) -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self.getSwiftList(imageIndex); }
+    // protocol
+    static func getAllSwiftProtocolList() -> [UnsafePointer<ProtocolDescriptor>] { return Self.getAllSwiftList(); }
+    static func getMainSwiftProtocolList() -> [UnsafePointer<ProtocolDescriptor>] { return Self.getMainSwiftList(); }
+    static func getSwiftProtocolList(_ imageIndex: UInt32) -> [UnsafePointer<ProtocolDescriptor>] { return Self.getSwiftList(imageIndex); }
     
     static func getObjcClass(_ cls: AnyClass) -> UnsafePointer<AnyClassMetadata> {
         let ptr = Unmanaged.passUnretained(cls as AnyObject).toOpaque();
@@ -63,25 +92,5 @@ class DDSwiftRuntime {
         var tmpVal = val;
         let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
         return UnsafeRawPointer.init(tmpValPtr).load(as:T.self);
-    }
-    
-    static func getPointerFromRelativeContextPointer(_ ptr: UnsafePointer<RelativeContextPointer>) -> OpaquePointer? {
-        if (0 != ptr.pointee) {
-            if ((ptr.pointee & 1) != 0) {
-                return UnsafePointer<OpaquePointer>(OpaquePointer(bitPattern:Int(bitPattern:ptr) + Int(ptr.pointee & ~1)))?.pointee;
-            } else {
-                return OpaquePointer(bitPattern:Int(bitPattern:ptr) + Int(ptr.pointee & ~1));
-            }
-        } else {
-            return nil;
-        }
-    }
-    
-    static func getPointerFromRelativeDirectPointer(_ ptr: UnsafePointer<RelativeDirectPointer>) -> OpaquePointer? {
-        if (0 != ptr.pointee) {
-            return OpaquePointer(bitPattern:Int(bitPattern:ptr) + Int(ptr.pointee));
-        } else {
-            return nil;
-        }
     }
 }
