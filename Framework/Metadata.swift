@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 // MARK: -
 // MARK: HeapObject
@@ -39,6 +40,40 @@ extension MetadataKind {
     var isHeapMetadataKind: Bool { get { return (self.rawValue & MetadataKindIsNonHeap) == 0; } }
     var isTypeMetadataKind: Bool { get { return (self.rawValue & MetadataKindIsNonType) == 0; } }
     var isRuntimePrivateMetadataKind: Bool { get { return (self.rawValue & MetadataKindIsRuntimePrivate) != 0; } }
+}
+
+/***
+ * Metadata
+ ***/
+struct Metadata : MetadataInterface {
+    let kindRawValue: UInt;
+}
+
+protocol MetadataInterface {
+    var kindRawValue: UInt { get }
+}
+fileprivate let MetadataInterface_LastEnumerated: UInt = 0x7FF;
+extension MetadataInterface {
+    // kind
+    var kind: MetadataKind {
+        get {
+            if (self.kindRawValue > MetadataInterface_LastEnumerated) {
+                return .Class;
+            }
+            return MetadataKind(rawValue:UInt32(self.kindRawValue)) ?? .Class;
+        }
+    }
+    var isClassObject: Bool { mutating get { return self.kind == .Class; } }
+    var isAnyKindOfClass: Bool {
+        get {
+            switch(self.kind) {
+            case .Class, .ObjCClassWrapper, .ForeignClass:
+                return true;
+            default:
+                return false;
+            }
+        }
+    }
 }
 
 /***
@@ -99,7 +134,7 @@ extension ValueWitnessTable {
 /***
  * ExistentialTypeMetadata
  ***/
-struct ExistentialTypeFlags{
+struct ExistentialTypeFlags {
     fileprivate let _value: UInt32;
 }
 
@@ -115,8 +150,8 @@ extension ExistentialTypeFlags {
     var specialProtocol: SpecialProtocol { get { return SpecialProtocol(rawValue:UInt8((self._value & Self.specialProtocolMask) >> Self.specialProtocolShift)) ?? .Error; } }
 }
 
-struct ExistentialTypeMetadata {
-    let kind: OpaquePointer;
+struct ExistentialTypeMetadata : MetadataInterface {
+    let kindRawValue: UInt;
     let flags: ExistentialTypeFlags;
     let numProtocols: UInt32;
     // ConstTargetMetadataPointer
@@ -126,47 +161,25 @@ struct ExistentialTypeMetadata {
 /***
  * HeapMetadata
  ***/
-struct HeapMetadata {
-    let kind: Pointer;
-    private let _valueWitnesses: UnsafePointer<ValueWitnessTable>;
+struct HeapMetadata : HeapMetadataInterface {
+    let kindRawValue: UInt;
 }
 
-extension HeapMetadata {
-    fileprivate static let LastEnumerated: UInt = 0x7FF;
-    var metadataKind: MetadataKind {
-        get {
-            if (self.kind > HeapMetadata.LastEnumerated) {
-                return .Class;
-            }
-            return MetadataKind(rawValue:UInt32(self.kind & HeapMetadata.LastEnumerated)) ?? .Class;
-        }
-    }
-    var isClassObject: Bool { get { return self.metadataKind == .Class; } }
-    var isAnyExistentialType: Bool {
-        get {
-            switch (self.metadataKind) {
-            case .ExistentialMetatype, .Existential:
-                return true;
-            default:
-                return false;
-            }
-        }
-    }
-    var isAnyClass: Bool {
-        get {
-            switch (self.metadataKind) {
-            case .Class, .ObjCClassWrapper, .ForeignClass:
-                return true;
-            default:
-                return false;
-            }
-        }
-    }
-    
+protocol HeapMetadataInterface : MetadataInterface {
+}
+
+extension HeapMetadataInterface {
     // valueWitnesses
     var valueWitnesses: UnsafePointer<ValueWitnessTable> { mutating get { return Self.getValueWitnesses(&self); } }
-    static func getValueWitnesses(_ data: UnsafePointer<HeapMetadata>) -> UnsafePointer<ValueWitnessTable> {
-        return data.advanced(by:-1).pointee._valueWitnesses;
+    static func getValueWitnesses<T : HeapMetadataInterface>(_ data: UnsafePointer<T>) -> UnsafePointer<ValueWitnessTable> {
+        let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(data)).advanced(by:-1);
+        return UnsafePointer<ValueWitnessTable>(ptr.pointee);
+    }
+    // destroy
+    var destroy: UnsafePointer<FunctionPointer> { mutating get { return Self.getDestroy(&self); } }
+    static func getDestroy<T : HeapMetadataInterface>(_ cls: UnsafePointer<T>) -> UnsafePointer<FunctionPointer> {
+        let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(cls)).advanced(by:-2);
+        return UnsafePointer<FunctionPointer>(ptr.pointee);
     }
 }
 
@@ -180,38 +193,33 @@ struct HeapObject {
 
 // MARK: -
 // MARK: ClassMetadata
-protocol ObjcClassInterface {
+protocol AnyClassMetadataInterface : HeapMetadataInterface {
+    var superclass: OpaquePointer { get };
+    var cache0: UInt { get };
+    var cache1: UInt { get };
+    var data: UInt { get };
 }
-extension ObjcClassInterface {
+extension AnyClassMetadataInterface {
     // name
     var name: String { mutating get { Self.getName(&self); } }
-    static func getName<T : ObjcClassInterface>(_ cls: UnsafePointer<T>) -> String {
+    static func getName<T : AnyClassMetadataInterface>(_ cls: UnsafePointer<T>) -> String {
         return String.init(cString:class_getName(unsafeBitCast(cls, to:AnyClass.self)));
     }
+    
+    var isTypeMetadata: Bool { get { return self.data & 2 != 0; } }
+    var isPureObjC: Bool { get { return !self.isTypeMetadata; } }
 }
 
 /***
  * AnyClassMetadata
  ***/
-struct AnyClassMetadata : ObjcClassInterface {
-    let isa: OpaquePointer;
+struct AnyClassMetadata : AnyClassMetadataInterface {
+    let kindRawValue: UInt;
     let superclass: OpaquePointer;
     let cache0: uintptr_t;
     let cache1: uintptr_t;
-    let ro: uintptr_t;
+    let data: UInt;
 };
-
-extension AnyClassMetadata {
-    var isSwiftMetadata: Bool {
-        get {
-            if (self.ro & (1<<1) > 0) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-}
 
 /***
  * ClassMetadata
@@ -224,12 +232,12 @@ enum ClassFlags : UInt32 {
     case IsCanonicalStaticSpecialization = 0x10;
 }
 
-struct ClassMetadata : ObjcClassInterface {
-    let isa: OpaquePointer;
+struct ClassMetadata : AnyClassMetadataInterface {
+    let kindRawValue: UInt;
     let superclass: OpaquePointer;
-    let cache0: uintptr_t;
-    let cache1: uintptr_t;
-    let ro: uintptr_t;
+    let cache0: UInt;
+    let cache1: UInt;
+    let data: UInt;
     fileprivate let _flags: UInt32;
     let instanceAddressPoint: UInt32;
     let instanceSize: UInt32;
@@ -277,17 +285,5 @@ extension ClassMetadata {
         let size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
         let bastPtr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:offset);
         return UnsafeBufferPointer(start:UnsafePointer<FunctionPointer>(OpaquePointer(bastPtr)), count:size);
-    }
-    // valueWitnesses
-    var valueWitnesses: UnsafePointer<ValueWitnessTable> { mutating get { return Self.getValueWitnesses(&self); } }
-    static func getValueWitnesses(_ cls: UnsafePointer<ClassMetadata>) -> UnsafePointer<ValueWitnessTable> {
-        let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(cls)).advanced(by:-1);
-        return UnsafePointer<ValueWitnessTable>(ptr.pointee);
-    }
-    // destroy
-    var destroy: UnsafePointer<FunctionPointer> { mutating get { return Self.getDestroy(&self); } }
-    static func getDestroy(_ cls: UnsafePointer<ClassMetadata>) -> UnsafePointer<FunctionPointer> {
-        let ptr = UnsafePointer<OpaquePointer>(OpaquePointer(cls)).advanced(by:-2);
-        return UnsafePointer<FunctionPointer>(ptr.pointee);
     }
 }

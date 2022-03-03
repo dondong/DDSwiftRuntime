@@ -59,15 +59,15 @@ enum MethodDescriptorKind : UInt8 {
  * ContextDescriptorFlags
  ***/
 struct ContextDescriptorFlags {
-    fileprivate let value: UInt32;
+    fileprivate let _value: UInt32;
 }
 
 extension ContextDescriptorFlags {
-    var kind: ContextDescriptorKind { get { return ContextDescriptorKind(rawValue:UInt8(self.value & 0x1F)) ?? .Module; } }
-    var isGeneric: Bool { get { return (self.value & 0x80) != 0; } }
-    var isUnique: Bool { get { return (self.value & 0x40) != 0; } }
-    var version: UInt8 { get { return UInt8((self.value >> 8) & 0xFF); } }
-    var kindSpecificFlags: UInt16 { get { return UInt16((self.value >> 16) & 0xFFFF); } }
+    var kind: ContextDescriptorKind { get { return ContextDescriptorKind(rawValue:UInt8(self._value & 0x1F)) ?? .Module; } }
+    var isGeneric: Bool { get { return (self._value & 0x80) != 0; } }
+    var isUnique: Bool { get { return (self._value & 0x40) != 0; } }
+    var version: UInt8 { get { return UInt8((self._value >> 8) & 0xFF); } }
+    var kindSpecificFlags: UInt16 { get { return UInt16((self._value >> 16) & 0xFFFF); } }
     var metadataInitialization: MetadataInitializationKind { get { return MetadataInitializationKind(rawValue:UInt8(self.kindSpecificFlags & 0x3)) ?? .NoMetadataInitialization } }
     var hasResilientSuperclass: Bool { get { return (self.kindSpecificFlags & 0x2000) != 0; } }
     var hasVTable: Bool { get { return (self.kindSpecificFlags & 0x8000) != 0; } }
@@ -121,8 +121,8 @@ extension ProtocolContextDescriptorFlags {
     fileprivate static let IsResilient: UInt16 = 1;
     fileprivate static let SpecialProtocolKind: UInt16 = 2;
     fileprivate static let SpecialProtocolKind_width: UInt16 = 6;
-    var classConstraint: ProtocolClassConstraint { get { return ProtocolClassConstraint(rawValue:UInt8((self._value >> Self.HasClassConstraint) & Self.HasClassConstraint_width)) ?? .Class; } }
-    var specialProtocol: SpecialProtocol { get { return SpecialProtocol(rawValue:UInt8((self._value >> Self.SpecialProtocolKind) & Self.SpecialProtocolKind_width)) ?? .None; } }
+    var classConstraint: ProtocolClassConstraint { get { return ProtocolClassConstraint(rawValue:UInt8((self._value >> Self.HasClassConstraint) & ((1 << Self.HasClassConstraint_width) - 1))) ?? .Class; } }
+    var specialProtocol: SpecialProtocol { get { return SpecialProtocol(rawValue:UInt8((self._value >> Self.SpecialProtocolKind) & ((1 << Self.SpecialProtocolKind_width) - 1))) ?? .None; } }
 }
 
 struct ProtocolDescriptor : ContextDescriptorInterface {
@@ -162,13 +162,13 @@ extension ProtocolDescriptor {
         let ptr = UnsafePointer<GenericRequirementDescriptor>(OpaquePointer(data.advanced(by:1)));
         return UnsafeBufferPointer<GenericRequirementDescriptor>(start:ptr, count:Int(data.pointee.numRequirementsInSignature));
     }
-    //
-    fileprivate static func _getRequirementSignatureOffset(_ data: UnsafePointer<ProtocolDescriptor>) -> Int {
+    // requirements
+    fileprivate static func _getRequirementsOffset(_ data: UnsafePointer<ProtocolDescriptor>) -> Int {
         return MemoryLayout<GenericRequirementDescriptor>.size * Int(data.pointee.numRequirementsInSignature);
     }
     var requirements: UnsafeBufferPointer<ProtocolRequirement> { mutating get { return Self.getRequirements(&self); } }
     static func getRequirements(_ data: UnsafePointer<ProtocolDescriptor>) -> UnsafeBufferPointer<ProtocolRequirement> {
-        let offset = Self._getRequirementSignatureOffset(data);
+        let offset = Self._getRequirementsOffset(data);
         let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:ProtocolRequirement.self);
         return UnsafeBufferPointer<ProtocolRequirement>(start:ptr, count:Int(data.pointee.numRequirements));
     }
@@ -223,6 +223,39 @@ extension ProtocolRequirement {
 /***
  * TypeContextDescriptor
  ***/
+struct TypeContextDescriptorFlags {
+    fileprivate let _value: UInt16;
+    init(_ val: UInt16) {
+        self._value = val;
+    }
+}
+
+extension TypeContextDescriptorFlags {
+    fileprivate static let MetadataInitialization: UInt16 = 0;
+    fileprivate static let MetadataInitialization_width: UInt16 = 2;
+    fileprivate static let HasImportInfo: UInt16 = 2;
+    fileprivate static let HasCanonicalMetadataPrespecializations: UInt16 = 3;
+    fileprivate static let Class_IsActor: UInt16 = 7;
+    fileprivate static let Class_IsDefaultActor: UInt16 = 8;
+    fileprivate static let Class_ResilientSuperclassReferenceKind: UInt16 = 9;
+    fileprivate static let Class_ResilientSuperclassReferenceKind_width: UInt16 = 3;
+    fileprivate static let Class_AreImmediateMembersNegative: UInt16 = 12;
+    fileprivate static let Class_HasResilientSuperclass: UInt16 = 13;
+    fileprivate static let Class_HasOverrideTable: UInt16 = 14;
+    fileprivate static let Class_HasVTable: UInt16 = 15;
+    var metadataInitialization: MetadataInitializationKind { get { return MetadataInitializationKind(rawValue:UInt8((self._value >> Self.MetadataInitialization) & ((1 << Self.MetadataInitialization_width) - 1))) ?? .NoMetadataInitialization; } }
+    var hasSingletonMetadataInitialization: Bool { get { return self.metadataInitialization == .SingletonMetadataInitialization; } }
+    var hasForeignMetadataInitialization: Bool { get { return self.metadataInitialization == .ForeignMetadataInitialization; } }
+    var hasImportInfo: Bool { get { return (self._value & (1 << Self.HasImportInfo)) != 0; } }
+    var hasCanonicalMetadataPrespecializations: Bool { get { return (self._value & (1 << Self.HasCanonicalMetadataPrespecializations)) != 0; } }
+    var class_hasVTable: Bool { get { return (self._value & (1 << Self.Class_HasVTable)) != 0; } }
+    var class_hasOverrideTable: Bool { get { return (self._value & (1 << Self.Class_HasOverrideTable)) != 0; } }
+    var class_areImmediateMembersNegative: Bool { get { return (self._value & (1 << Self.Class_AreImmediateMembersNegative)) != 0; } }
+    var class_isDefaultActor: Bool { get { return (self._value & (1 << Self.Class_IsDefaultActor)) != 0; } }
+    var class_isActor: Bool { get { return (self._value & (1 << Self.Class_IsActor)) != 0; } }
+    var class_ResilientSuperclassReferenceKind: TypeReferenceKind { get { return TypeReferenceKind(rawValue:UInt16((self._value >> Self.Class_ResilientSuperclassReferenceKind) & ((1 << Self.Class_ResilientSuperclassReferenceKind_width) - 1))) ?? .DirectTypeDescriptor; } }
+}
+
 protocol TypeContextDescriptorInterface : ContextDescriptorInterface {
 }
 
@@ -254,6 +287,12 @@ extension TypeContextDescriptorInterface {
             return nil;
         }
     }
+    
+    var typgetTypeContextDescriptorFlags: TypeContextDescriptorFlags { get { return TypeContextDescriptorFlags(self.flags.kindSpecificFlags) } }
+    var metadataInitialization: MetadataInitializationKind { get { return self.typgetTypeContextDescriptorFlags.metadataInitialization; } }
+    var hasSingletonMetadataInitialization: Bool { get { return self.typgetTypeContextDescriptorFlags.hasSingletonMetadataInitialization; } }
+    var hasForeignMetadataInitialization: Bool { get { return self.typgetTypeContextDescriptorFlags.hasForeignMetadataInitialization; } }
+    var hasCanonicicalMetadataPrespecializations: Bool { get { return self.typgetTypeContextDescriptorFlags.hasCanonicalMetadataPrespecializations; } }
 }
 
 struct TypeContextDescriptor : TypeContextDescriptorInterface {
@@ -282,6 +321,18 @@ extension ExtensionContextDescriptor {
 
 // MARK: -
 // MARK: Anonymous
+struct AnonymousContextDescriptorFlags {
+    fileprivate let _value: UInt16;
+    init(_ val: UInt16) {
+        self._value = val;
+    }
+}
+
+extension AnonymousContextDescriptorFlags {
+    fileprivate static let HasMangledName: UInt16 = 0;
+    var hasMangledName: Bool { get { return (self._value & (1 << Self.HasMangledName)) != 0; } }
+}
+
 struct AnonymousContextDescriptor {
     let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
@@ -292,6 +343,33 @@ struct AnonymousContextDescriptor {
     // MangledContextName
 }
 
+extension AnonymousContextDescriptor {
+    var anonymousContextDescriptorFlags: AnonymousContextDescriptorFlags { get { return AnonymousContextDescriptorFlags(self.flags.kindSpecificFlags); } }
+    var hasMangledName: Bool { get { return self.anonymousContextDescriptorFlags.hasMangledName; } }
+    // mangledName
+    var mangledName: String? { mutating get { return Self.getMangledName(&self); } }
+    static func getMangledName(_ data: UnsafePointer<AnonymousContextDescriptor>) -> String? {
+        if (data.pointee.hasMangledName) {
+            let ptr = OpaquePointer(UnsafePointer<GenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1))).advanced(by:1));
+            return Optional(UnsafeMutablePointer<MangledContextName>(ptr).pointee.name);
+        } else {
+            return nil;
+        }
+    }
+}
+
+struct MangledContextName {
+    fileprivate var _name: RelativeDirectPointer;
+}
+
+extension MangledContextName {
+    var name: String { mutating get { return Self.getName(&self); } }
+    static func getName(_ data: UnsafePointer<MangledContextName>) -> String {
+        let ptr = UnsafeMutablePointer<MangledContextName>(mutating:data).pointee._name.pointer!;
+        return String(cString:UnsafePointer<CChar>(ptr));
+    }
+}
+
 // MARK: -
 // MARK: OpaqueType
 struct OpaqueTypeDescriptor {
@@ -299,6 +377,10 @@ struct OpaqueTypeDescriptor {
     fileprivate let _parent: RelativeDirectPointer;
     // GenericContextDescriptorHeader
     // RelativeDirectPointer<const char>
+}
+
+extension OpaqueTypeDescriptor {
+    var numUnderlyingTypeArguments: UInt16 { get { return self.flags.kindSpecificFlags; } }
 }
 
 // MARK: -
@@ -335,6 +417,79 @@ struct StructDescriptor : ValueTypeDescriptorInterface {
 
 extension StructDescriptor {
     var hasFieldOffsetVector: Bool { get { return self.fieldOffsetVectorOffset != 0; } }
+    // foreignMetadataInitialization
+    fileprivate static func _getForeignMetadataInitializationOffset(_ data: UnsafePointer<StructDescriptor>) -> Int {
+        if (data.pointee.flags.isGeneric) {
+            let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
+            return TypeGenericContextDescriptorHeader.getTypeGenericContextDataSize(ptr);
+        }
+        return 0;
+    }
+    var foreignMetadataInitialization: UnsafePointer<ForeignMetadataInitialization>? { mutating get { return Self.getForeignMetadataInitialization(&self); } }
+    static func getForeignMetadataInitialization(_ data: UnsafePointer<StructDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
+        if (data.pointee.hasForeignMetadataInitialization) {
+            let offset = Self._getForeignMetadataInitializationOffset(data);
+            return Optional(UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:ForeignMetadataInitialization.self));
+        } else {
+            return nil;
+        }
+    }
+    // singletonMetadataInitialization
+    fileprivate static func _getSingletonMetadataInitializationOffset(_ data: UnsafePointer<StructDescriptor>) -> Int {
+        var offset = Self._getForeignMetadataInitializationOffset(data);
+        if (data.pointee.hasForeignMetadataInitialization) {
+            offset += MemoryLayout<ForeignMetadataInitialization>.size;
+        }
+        return offset;
+    }
+    var singletonMetadataInitialization: UnsafePointer<SingletonMetadataInitialization>? { mutating get { return Self.getSingletonMetadataInitialization(&self); } }
+    static func getSingletonMetadataInitialization(_ data: UnsafePointer<StructDescriptor>) -> UnsafePointer<SingletonMetadataInitialization>? {
+        if (data.pointee.hasSingletonMetadataInitialization) {
+            let offset = Self._getSingletonMetadataInitializationOffset(data);
+            return Optional(UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:SingletonMetadataInitialization.self));
+        } else {
+            return nil;
+        }
+    }
+    // canonicicalMetadataPrespecializations
+    fileprivate static func _getCanonicicalMetadataPrespecializationsOffset(_ data: UnsafePointer<StructDescriptor>) -> Int {
+        var offset = Self._getSingletonMetadataInitializationOffset(data);
+        if (data.pointee.hasSingletonMetadataInitialization) {
+            offset += MemoryLayout<SingletonMetadataInitialization>.size;
+        }
+        return offset;
+    }
+    var canonicicalMetadataPrespecializations: UnsafeBufferPointer<CanonicalSpecializedMetadatasListEntry>? { mutating get { return Self.getCanonicicalMetadataPrespecializations(&self); } }
+    static func getCanonicicalMetadataPrespecializations(_ data: UnsafePointer<StructDescriptor>) -> UnsafeBufferPointer<CanonicalSpecializedMetadatasListEntry>? {
+        if (data.pointee.hasCanonicicalMetadataPrespecializations) {
+            let offset = Self._getCanonicicalMetadataPrespecializationsOffset(data);
+            let countPtr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:CanonicalSpecializedMetadatasListCount.self);
+            let listPtr = UnsafePointer<CanonicalSpecializedMetadatasListEntry>(OpaquePointer(countPtr.advanced(by:1)));
+            return UnsafeBufferPointer<CanonicalSpecializedMetadatasListEntry>(start:listPtr, count:Int(countPtr.pointee.count));
+        } else {
+            return nil;
+        }
+    }
+    // canonicalMetadataPrespecializationCachingOnceToken
+    fileprivate static func _getCanonicalMetadataPrespecializationCachingOnceToken(_ data: UnsafePointer<StructDescriptor>) -> Int {
+        var offset = Self._getCanonicicalMetadataPrespecializationsOffset(data);
+        if (data.pointee.hasCanonicicalMetadataPrespecializations) {
+            let countPtr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:CanonicalSpecializedMetadatasListCount.self);
+            offset += MemoryLayout<CanonicalSpecializedMetadatasListCount>.size + MemoryLayout<SingletonMetadataInitialization>.size * Int(countPtr.pointee.count);
+        }
+        return offset;
+    }
+    var canonicalMetadataPrespecializationCachingOnceToken: CLong { mutating get { return Self.getCanonicalMetadataPrespecializationCachingOnceToken(&self); } }
+    static func getCanonicalMetadataPrespecializationCachingOnceToken(_ data: UnsafePointer<StructDescriptor>) -> CLong {
+        if (data.pointee.hasCanonicicalMetadataPrespecializations) {
+            let offset = Self._getCanonicalMetadataPrespecializationCachingOnceToken(data);
+            let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:CanonicalSpecializedMetadatasCachingOnceToken.self);
+            return CanonicalSpecializedMetadatasCachingOnceToken.getToken(ptr);
+        } else {
+            return 0;
+        }
+    }
+    
 }
 
 // MARK: -
@@ -348,7 +503,7 @@ struct EnumDescriptor : ValueTypeDescriptorInterface {
     fileprivate let _name: RelativeDirectPointer;
     fileprivate let _accessFunction: RelativeDirectPointer;
     fileprivate let _fieldDescriptor: RelativeDirectPointer;
-    let numPayloadCasesAndPayloadSizeOffset: UInt32;
+    fileprivate let _numPayloadCasesAndPayloadSizeOffset: UInt32;
     let numEmptyCases: UInt32;
     // ForeignMetadataInitialization
     // SingletonMetadataInitialization
@@ -358,9 +513,73 @@ struct EnumDescriptor : ValueTypeDescriptorInterface {
 }
 
 extension EnumDescriptor {
-    var numPayloadCases: UInt32 { get { return self.numPayloadCasesAndPayloadSizeOffset & 0x00FFFFFF; } }
+    var numPayloadCases: UInt32 { get { return self._numPayloadCasesAndPayloadSizeOffset & 0x00FFFFFF; } }
     var numCases: UInt32 { get { return self.numPayloadCases + self.numEmptyCases; } }
-    var payloadSizeOffset: UInt32 { get { return ((self.numPayloadCasesAndPayloadSizeOffset & 0xFF000000) >> 24); } }
+    var payloadSizeOffset: UInt32 { get { return ((self._numPayloadCasesAndPayloadSizeOffset & 0xFF000000) >> 24); } }
+    var hasPayloadSizeOffset: Bool { get { return self.payloadSizeOffset != 0; } }
+    // foreignMetadataInitialization
+    var foreignMetadataInitialization: UnsafePointer<ForeignMetadataInitialization>? { mutating get { return Self.getForeignMetadataInitialization(&self); } }
+    static func getForeignMetadataInitialization(_ data: UnsafePointer<EnumDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
+        if (data.pointee.hasSingletonMetadataInitialization) {
+            return UnsafePointer<ForeignMetadataInitialization>(OpaquePointer(data.advanced(by:1)));
+        } else {
+            return nil;
+        }
+    }
+    // singletonMetadataInitialization
+    fileprivate static func _getSingletonMetadataInitializationOffset(_ data: UnsafePointer<EnumDescriptor>) -> Int {
+        if (data.pointee.hasSingletonMetadataInitialization) {
+            return MemoryLayout<ForeignMetadataInitialization>.size;
+        }
+        return 0;
+    }
+    var singletonMetadataInitialization: UnsafePointer<SingletonMetadataInitialization>? { mutating get { return Self.getSingletonMetadataInitialization(&self); } }
+    static func getSingletonMetadataInitialization(_ data: UnsafePointer<EnumDescriptor>) -> UnsafePointer<SingletonMetadataInitialization>? {
+        if (data.pointee.hasSingletonMetadataInitialization) {
+            let offset = Self._getSingletonMetadataInitializationOffset(data);
+            return UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:SingletonMetadataInitialization.self);
+        } else {
+            return nil;
+        }
+    }
+    // canonicicalMetadataPrespecializations
+    fileprivate static func _getCanonicicalMetadataPrespecializationsOffset(_ data: UnsafePointer<EnumDescriptor>) -> Int {
+        var offset = Self._getSingletonMetadataInitializationOffset(data);
+        if (data.pointee.hasSingletonMetadataInitialization) {
+            offset += MemoryLayout<SingletonMetadataInitialization>.size;
+        }
+        return offset;
+    }
+    var canonicicalMetadataPrespecializations: UnsafeBufferPointer<CanonicalSpecializedMetadatasListEntry>? { mutating get { return Self.getCanonicicalMetadataPrespecializations(&self); } }
+    static func getCanonicicalMetadataPrespecializations(_ data: UnsafePointer<EnumDescriptor>) -> UnsafeBufferPointer<CanonicalSpecializedMetadatasListEntry>? {
+        if (data.pointee.hasCanonicicalMetadataPrespecializations) {
+            let offset = Self._getCanonicicalMetadataPrespecializationsOffset(data);
+            let countPtr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:CanonicalSpecializedMetadatasListCount.self);
+            let listPtr = UnsafePointer<CanonicalSpecializedMetadatasListEntry>(OpaquePointer(countPtr.advanced(by:1)));
+            return UnsafeBufferPointer<CanonicalSpecializedMetadatasListEntry>(start:listPtr, count:Int(countPtr.pointee.count));
+        } else {
+            return nil;
+        }
+    }
+    // canonicalMetadataPrespecializationCachingOnceToken
+    fileprivate static func _getCanonicalMetadataPrespecializationCachingOnceToken(_ data: UnsafePointer<EnumDescriptor>) -> Int {
+        var offset = Self._getCanonicicalMetadataPrespecializationsOffset(data);
+        if (data.pointee.hasCanonicicalMetadataPrespecializations) {
+            let countPtr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:CanonicalSpecializedMetadatasListCount.self);
+            offset += MemoryLayout<CanonicalSpecializedMetadatasListCount>.size + MemoryLayout<SingletonMetadataInitialization>.size * Int(countPtr.pointee.count);
+        }
+        return offset;
+    }
+    var canonicalMetadataPrespecializationCachingOnceToken: CLong { mutating get { return Self.getCanonicalMetadataPrespecializationCachingOnceToken(&self); } }
+    static func getCanonicalMetadataPrespecializationCachingOnceToken(_ data: UnsafePointer<EnumDescriptor>) -> CLong {
+        if (data.pointee.hasCanonicicalMetadataPrespecializations) {
+            let offset = Self._getCanonicalMetadataPrespecializationCachingOnceToken(data);
+            let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:CanonicalSpecializedMetadatasCachingOnceToken.self);
+            return CanonicalSpecializedMetadatasCachingOnceToken.getToken(ptr);
+        } else {
+            return 0;
+        }
+    }
 }
 
 // MARK: -
@@ -374,7 +593,7 @@ struct ClassDescriptor : TypeContextDescriptorInterface {
     fileprivate let _name: RelativeDirectPointer;
     fileprivate let _accessFunction: RelativeDirectPointer;
     fileprivate let _fieldDescriptor: RelativeDirectPointer;
-    let superclassType: RelativeDirectPointer;
+    fileprivate var _superclassType: RelativeDirectPointer;
     let metadataNegativeSizeInWords: UInt32;  // resilientMetadataBounds: RelativeDirectPointer
     let metadataPositiveSizeInWords: UInt32;  // extraClassFlags: UInt32
     let numImmediateMembers: UInt32;
@@ -396,6 +615,15 @@ struct ClassDescriptor : TypeContextDescriptorInterface {
 };
 
 extension ClassDescriptor {
+    // superclassType
+    var superclassType: String? { mutating get { return Self.getSuperclassType(&self); } }
+    static func getSuperclassType(_ data: UnsafePointer<ClassDescriptor>) -> String? {
+        if let ptr = UnsafeMutablePointer<ClassDescriptor>(mutating:data).pointee._superclassType.pointer {
+            return Optional(String(cString:UnsafePointer<CChar>(ptr)));
+        } else {
+            return nil;
+        }
+    }
     // typeGenericContextDescriptorHeader
     var typeGenericContextDescriptorHeader: UnsafePointer<TypeGenericContextDescriptorHeader>? { mutating get { return Self.getTypeGenericContextDescriptorHeader(&self); } }
     static func getTypeGenericContextDescriptorHeader(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<TypeGenericContextDescriptorHeader>? {
@@ -432,7 +660,7 @@ extension ClassDescriptor {
         var offset = 0;
         if (data.pointee.flags.isGeneric) {
             let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
-            offset = MemoryLayout<TypeGenericContextDescriptorHeader>.size + Int((ptr.pointee.base.numParams + 3) & ~UInt16(3)) + MemoryLayout<GenericRequirementDescriptor>.size * Int(ptr.pointee.base.numRequirements);
+            offset = TypeGenericContextDescriptorHeader.getTypeGenericContextDataSize(ptr);
         }
         return offset;
     }
@@ -594,6 +822,10 @@ extension TypeGenericContextDescriptorHeader {
             return nil;
         }
     }
+    //
+    fileprivate static func getTypeGenericContextDataSize(_ data: UnsafePointer<TypeGenericContextDescriptorHeader>) ->Int {
+        return MemoryLayout<TypeGenericContextDescriptorHeader>.size + Int((data.pointee.base.numParams + 3) & ~UInt16(3)) + MemoryLayout<GenericRequirementDescriptor>.size * Int(data.pointee.base.numRequirements);
+    }
 }
 
 struct GenericMetadataInstantiationCache {
@@ -621,7 +853,7 @@ extension GenericMetadataPatternFlags {
     var class_hasImmediateMembersPattern: Bool { get { return (self._value & (1 << Self.Class_HasImmediateMembersPattern)) != 0; } }
     var hasExtraDataPattern: Bool { get { return (self._value & (1 << Self.HasExtraDataPattern)) != 0; } }
     var hasTrailingFlags: Bool { get { return (self._value & (1 << Self.HasTrailingFlags)) != 0; } }
-    var value_getMetadataKind: MetadataKind { get { return MetadataKind(rawValue:(Self.Value_MetadataKind_width & (self._value >> Self.Value_MetadataKind))) ?? .Class; } }
+    var value_getMetadataKind: MetadataKind { get { return MetadataKind(rawValue:(((1 << Self.Value_MetadataKind_width) - 1) & (self._value >> Self.Value_MetadataKind))) ?? .Class; } }
 }
 
 struct GenericMetadataPattern {
@@ -805,6 +1037,7 @@ struct GenericWitnessTable {
 }
 
 extension GenericWitnessTable {
+    fileprivate static let NumGenericMetadataPrivateDataWords: UInt32 = 16;
     var witnessTablePrivateSizeInWords: UInt16 { get { return self.witnessTablePrivateSizeInWordsAndRequiresInstantiation >> 0x01; } }
     var requiresInstantiation: UInt16 { get { return self.witnessTablePrivateSizeInWordsAndRequiresInstantiation & 0x01; } }
     // instantiator
@@ -816,7 +1049,7 @@ extension GenericWitnessTable {
     var privateData: UnsafeBufferPointer<FunctionPointer> { mutating get { return Self.getPrivateData(&self); } }
     static func getPrivateData(_ data: UnsafePointer<GenericWitnessTable>) -> UnsafeBufferPointer<FunctionPointer> {
         let ptr = UnsafeMutablePointer<GenericWitnessTable>(mutating:data).pointee._privateData.pointer!;
-        let size = (data.pointee.requiresInstantiation != 0 ? data.pointee.witnessTablePrivateSizeInWords : data.pointee.witnessTableSizeInWords);
+        let size = data.pointee.witnessTablePrivateSizeInWords;  // not sure
         return UnsafeBufferPointer<FunctionPointer>(start:UnsafePointer<FunctionPointer>(ptr), count:Int(size));
     }
 }
@@ -932,10 +1165,10 @@ extension ProtocolConformanceDescriptor {
             return nil;
         }
     }
-    var vtable: UnsafeBufferPointer<FunctionPointer>? { mutating get { return Self.getVtable(&self); } }
-    static func getVtable(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> UnsafeBufferPointer<FunctionPointer>? {
+    var witnessTable: UnsafeBufferPointer<FunctionPointer>? { mutating get { return Self.getWitnessTable(&self); } }
+    static func getWitnessTable(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> UnsafeBufferPointer<FunctionPointer>? {
         if let ptr = UnsafePointer<FunctionPointer>(OpaquePointer(Self.getWitnessTablePattern(data)?.advanced(by:1))) {
-            let size = Self.getProtocolDescriptor(data).pointee.numRequirements;
+            let size = Self.getProtocolDescriptor(data).pointee.numRequirements; // not sure
             return UnsafeBufferPointer<FunctionPointer>(start:ptr, count:Int(size));
         } else {
             return nil;
@@ -970,7 +1203,7 @@ extension ProtocolConformanceDescriptor {
         }
     }
     // conditionalRequirements
-    fileprivate static func _getRetretroactiveContextOffset(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> Int {
+    fileprivate static func _getConditionalRequirementsOffset(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> Int {
         if (data.pointee.flags.isRetroactive) {
             return MemoryLayout<RelativeContextPointer>.size;
         }
@@ -981,7 +1214,7 @@ extension ProtocolConformanceDescriptor {
     static func getConditionalRequirements(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> UnsafeBufferPointer<GenericRequirementDescriptor>? {
         let size = data.pointee.flags.numConditionalRequirements;
         if (size > 0) {
-            let offset = Self._getRetretroactiveContextOffset(data);
+            let offset = Self._getConditionalRequirementsOffset(data);
             let ptr = OpaquePointer(UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset));
             return Optional(UnsafeBufferPointer(start:UnsafePointer<GenericRequirementDescriptor>(ptr), count:Int(size)));
         } else {
@@ -989,8 +1222,8 @@ extension ProtocolConformanceDescriptor {
         }
     }
     // resilientWitnesses
-    fileprivate static func _getConditionalRequirementsOffset(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> Int {
-        var offset = Self._getRetretroactiveContextOffset(data);
+    fileprivate static func _getResilientWitnessesOffset(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> Int {
+        var offset = Self._getConditionalRequirementsOffset(data);
         if (data.pointee.flags.numConditionalRequirements > 0) {
             offset += Int(data.pointee.flags.numConditionalRequirements) * MemoryLayout<GenericRequirementDescriptor>.size;
         }
@@ -999,7 +1232,7 @@ extension ProtocolConformanceDescriptor {
     var resilientWitnesses: UnsafeBufferPointer<ResilientWitness>? { mutating get { return Self.getResilientWitnesses(&self); } }
     static func getResilientWitnesses(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> UnsafeBufferPointer<ResilientWitness>? {
         if (data.pointee.flags.hasResilientWitnesses) {
-            let offset = Self._getConditionalRequirementsOffset(data);
+            let offset = Self._getResilientWitnessesOffset(data);
             let headerPtr = UnsafePointer<ResilientWitnessesHeader>(OpaquePointer(UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset)));
             let ptr = UnsafePointer<ResilientWitness>(OpaquePointer(headerPtr.advanced(by:1)));
             return Optional(UnsafeBufferPointer(start:ptr, count:Int(headerPtr.pointee.numWitnesses)));
@@ -1008,8 +1241,8 @@ extension ProtocolConformanceDescriptor {
         }
     }
     // genericWitnessTable
-    fileprivate static func _getResilientWitnessesOffset(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> Int {
-        var offset = Self._getConditionalRequirementsOffset(data);
+    fileprivate static func _getGenericWitnessTableOffset(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> Int {
+        var offset = Self._getResilientWitnessesOffset(data);
         if (data.pointee.flags.hasResilientWitnesses) {
             let headerPtr = UnsafePointer<ResilientWitnessesHeader>(OpaquePointer(UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset)));
             offset += MemoryLayout<ResilientWitnessesHeader>.size + Int(headerPtr.pointee.numWitnesses) * MemoryLayout<ResilientWitness>.size;
@@ -1019,7 +1252,7 @@ extension ProtocolConformanceDescriptor {
     var genericWitnessTable: UnsafePointer<GenericWitnessTable>? { mutating get { return Self.getGenericWitnessTable(&self); } }
     static func getGenericWitnessTable(_ data: UnsafePointer<ProtocolConformanceDescriptor>) -> UnsafePointer<GenericWitnessTable>? {
         if (data.pointee.flags.hasGenericWitnessTable) {
-            let offset = Self._getResilientWitnessesOffset(data);
+            let offset = Self._getGenericWitnessTableOffset(data);
             return UnsafePointer<GenericWitnessTable>(OpaquePointer(UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset)));
         } else {
             return nil;
@@ -1060,7 +1293,7 @@ extension ForeignMetadataInitialization {
  * SingletonMetadataCache
  ***/
 struct SingletonMetadataCache {
-    let metadata: OpaquePointer;
+    let metadata: UnsafePointer<Metadata>;
     let `private`: OpaquePointer;
 }
 
@@ -1231,8 +1464,15 @@ extension MethodOverrideDescriptor {
  * ObjCResilientClassStubInfo
  ***/
 struct ObjCResilientClassStubInfo {
-    let stub: RelativeDirectPointer;
+    fileprivate var _stub: RelativeDirectPointer;
 };
+
+extension ObjCResilientClassStubInfo {
+    var sub: OpaquePointer { mutating get { return Self.getSub(&self); } }
+    static func getSub(_ data: UnsafePointer<ObjCResilientClassStubInfo>) -> OpaquePointer {
+        return UnsafeMutablePointer<ObjCResilientClassStubInfo>(mutating:data).pointee._stub.pointer!;
+    }
+}
 
 /***
  * CanonicalSpecializedMetadatasListCount
@@ -1245,19 +1485,41 @@ struct CanonicalSpecializedMetadatasListCount {
  * CanonicalSpecializedMetadatasListEntry
  ***/
 struct CanonicalSpecializedMetadatasListEntry {
-    let metadata: RelativeDirectPointer;
+    fileprivate var _metadata: RelativeDirectPointer;
+}
+
+extension CanonicalSpecializedMetadatasListEntry {
+    var metadata: UnsafePointer<Metadata> { mutating get { return Self.getMetadata(&self); } }
+    static func getMetadata(_ data: UnsafePointer<CanonicalSpecializedMetadatasListEntry>) -> UnsafePointer<Metadata> {
+        return UnsafePointer<Metadata>(UnsafeMutablePointer<CanonicalSpecializedMetadatasListEntry>(mutating:data).pointee._metadata.pointer!);
+    }
 }
 
 /***
  * CanonicalSpecializedMetadataAccessorsListEntry
  ***/
 struct CanonicalSpecializedMetadataAccessorsListEntry {
-    let accessor: RelativeDirectPointer;
+    fileprivate var _accessor: RelativeDirectPointer;
 };
+
+extension CanonicalSpecializedMetadataAccessorsListEntry {
+    var accessor: OpaquePointer { mutating get { return Self.getAccessor(&self); } }
+    static func getAccessor(_ data: UnsafePointer<CanonicalSpecializedMetadataAccessorsListEntry>) -> OpaquePointer {
+        return UnsafeMutablePointer<CanonicalSpecializedMetadataAccessorsListEntry>(mutating:data).pointee._accessor.pointer!
+    }
+}
 
 /***
  * CanonicalSpecializedMetadatasCachingOnceToken
  ***/
 struct CanonicalSpecializedMetadatasCachingOnceToken {
-    let token: RelativeDirectPointer;
+    fileprivate var _token: RelativeDirectPointer;
 };
+
+extension CanonicalSpecializedMetadatasCachingOnceToken {
+    var token: CLong { mutating get { return Self.getToken(&self); } }
+    static func getToken(_ data: UnsafePointer<CanonicalSpecializedMetadatasCachingOnceToken>) -> CLong {
+        let ptr = UnsafeMutablePointer<CanonicalSpecializedMetadatasCachingOnceToken>(mutating:data).pointee._token.pointer!
+        return UnsafePointer<CLong>(ptr).pointee;
+    }
+}

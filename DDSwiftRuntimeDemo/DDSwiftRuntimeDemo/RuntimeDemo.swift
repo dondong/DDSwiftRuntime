@@ -9,34 +9,28 @@ import Foundation
 import Darwin
 
 func printAllType() {
-//    let list = DDSwiftRuntime.getMainSwiftTypeList();
-//    for i in 0..<list.count {
-//        print("***********************************************");
-//        print("type index:", i);
-//        printDescriptor(list[i]);
-//        print("");
-//    }
-    let list = DDSwiftRuntime.getMainSwiftProtocolConformanceList();
+    let list = DDSwiftRuntime.getMainSwiftTypeList();
     for i in 0..<list.count {
         print("***********************************************");
         print("type index:", i);
-        let pro = list[i];
-        printProtocolConformanceDescriptor(pro);
-    }}
+        printDescriptor(list[i]);
+        print("");
+    }
+}
 
 func printClass() {
-    if let metadata = DDSwiftRuntime.getSwiftClass(Test.self) {
-        printClassMetadata(metadata, "Test");
+//    if let metadata = DDSwiftRuntime.getSwiftClass(Test2.self) {
+//        printClassMetadata(metadata, "Test2");
+//    }
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
+        printClassMetadata(metadata, "SwiftBaseClass");
     }
-//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
-//        printClassMetadata(metadata, "SwiftBaseClass");
-//    }
-//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
-//        printClassMetadata(metadata, "SwiftClass");
-//    }
-//    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
-//        printClassMetadata(metadata, "SwiftChildClass");
-//    }
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
+        printClassMetadata(metadata, "SwiftClass");
+    }
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
+        printClassMetadata(metadata, "SwiftChildClass");
+    }
 }
 
 func printGenericClass() {
@@ -58,7 +52,7 @@ fileprivate func printClassMetadata(_ ptr: UnsafePointer<ClassMetadata>, _ clsNa
     print("***** ClassMetadata *****");
     print("address:", metadata);
     print("objc name:", metadata.pointee.name);
-    print("objc isa:", metadata.pointee.isa);
+    print("objc kind:", metadata.pointee.kind);
     print("objc supper:", metadata.pointee.superclass);
     print("flags:", metadata.pointee.flags);
     print("instanceAddressPoint:", metadata.pointee.instanceAddressPoint);
@@ -109,10 +103,10 @@ fileprivate func printProtocolConformanceDescriptor(_ d: UnsafePointer<ProtocolC
     print("flags kind:", des.pointee.flags.typeReferenceKind);
     print("protocolDescriptor:", des.pointee.protocolDescriptor, ProtocolDescriptor.getName(des.pointee.protocolDescriptor));
     print("witnessTablePattern:", des.pointee.witnessTablePattern ?? "");
-    if let table = des.pointee.vtable {
+    if let table = des.pointee.witnessTable {
         print("vtable");
         for i in 0..<table.count {
-            print("\(i) ", table.baseAddress?.advanced(by:i), table[i].functionName);
+            print("\(i) ", table.baseAddress!.advanced(by:i), table[i].functionName);
         }
     }
     if let name = des.pointee.directObjCClassName {
@@ -243,7 +237,8 @@ fileprivate func printClassDescriptor(_ d: UnsafePointer<ClassDescriptor>) {
 fileprivate func printEnumDescriptor(_ d: UnsafePointer<EnumDescriptor>) {
     printTypeContextDescriptor(UnsafePointer<TypeContextDescriptor>(OpaquePointer(d)));
     let des = UnsafeMutablePointer<EnumDescriptor>(OpaquePointer(d));
-    print("numPayloadCasesAndPayloadSizeOffset:", des.pointee.numPayloadCasesAndPayloadSizeOffset);
+    print("numCases:", des.pointee.numCases);
+    print("numPayloadCases:", des.pointee.numPayloadCases);
     print("numEmptyCases:", des.pointee.numEmptyCases);
 }
 

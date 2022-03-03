@@ -71,10 +71,10 @@ class Test2 : Testable{
     func test() {
         print("Test2");
     }
-    func test2() {
-        
-    }
     func test222() {
         print("test222");
+    }
+    func test2() {
+        
     }
 }
