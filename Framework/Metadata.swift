@@ -117,7 +117,7 @@ struct ValueWitnessTable {
     let stride: size_t;
     let flags: ValueWitnessFlags;
     let extraInhabitantCount: UInt32;
-    let getEnumTag: Pointer;
+    let getEnumTag: UInt;
     let destructiveProjectEnumData: OpaquePointer;
     let destructiveInjectEnumTag: OpaquePointer;
 }
@@ -246,7 +246,7 @@ struct ClassMetadata : AnyClassMetadataInterface {
     let classSize: UInt32;
     let classAddressPoint: UInt32;
     let description: UnsafePointer<ClassDescriptor>;
-    let ivarDestroyer: Pointer;
+    let ivarDestroyer: OpaquePointer;
     // After this come the class members, laid out as follows:
     //   - class members for the superclass (recursively)
     //   - metadata reference for the parent, if applicable

@@ -7,8 +7,6 @@
 
 import Foundation
 
-typealias Pointer=uintptr_t
-
 struct RelativeContextPointer {
     fileprivate let _value: Int32;
     var pointer: OpaquePointer? { mutating get { return Self.getPointer(&self); } }
