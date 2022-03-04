@@ -37,7 +37,7 @@ func printGenericClass() {
     if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericBaseClass<String>.self) {
         printClassMetadata(metadata, "SwiftGenericBaseClass");
     }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericClass<Float, Int>.self) {
+    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericClass<String, NSString>.self) {
         printClassMetadata(metadata, "SwiftGenericClass");
     }
     if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericChildClass.self) {
@@ -63,6 +63,21 @@ fileprivate func printClassMetadata(_ ptr: UnsafePointer<ClassMetadata>, _ clsNa
     print("classAddressPoint:", metadata.pointee.classAddressPoint);
     print("description:", metadata.pointee.description);
     print("ivarDestroyer:", metadata.pointee.ivarDestroyer);
+    if let gens = metadata.pointee.genericParams {
+        print("genericParams:")
+        for i in 0..<gens.count {
+            print("\(i).  kind:", gens[i].pointee.kind, gens[i]);
+            if let enumGen: UnsafePointer<EnumMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", EnumDescriptor.getName(enumGen.pointee.description));
+            } else if let strGen: UnsafePointer<StructMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", StructDescriptor.getName(strGen.pointee.description));
+            } else if let clsGen: UnsafePointer<ClassMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", ClassMetadata.getName(clsGen));
+            } else if let clsGen: UnsafePointer<AnyClassMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", AnyClassMetadata.getName(clsGen));
+            }
+        }
+    }
     print("function table:")
     let virtualMethods = metadata.pointee.virtualMethods;
     for i in 0..<virtualMethods.count {

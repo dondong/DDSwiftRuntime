@@ -41,9 +41,13 @@ struct FunctionPointer {
     }
     var functionName: String {
         get {
-            var info = dl_info();
-            dladdr(UnsafeRawPointer(self._value), &info);
-            return String(cString:info.dli_sname);
+            if (Int(bitPattern:self._value) != 0) {
+                var info = dl_info();
+                dladdr(UnsafeRawPointer(self._value), &info);
+                return String(cString:info.dli_sname);
+            } else {
+                return "";
+            }
         }
     }
 }

@@ -293,6 +293,38 @@ extension TypeContextDescriptorInterface {
     var hasSingletonMetadataInitialization: Bool { get { return self.typgetTypeContextDescriptorFlags.hasSingletonMetadataInitialization; } }
     var hasForeignMetadataInitialization: Bool { get { return self.typgetTypeContextDescriptorFlags.hasForeignMetadataInitialization; } }
     var hasCanonicicalMetadataPrespecializations: Bool { get { return self.typgetTypeContextDescriptorFlags.hasCanonicalMetadataPrespecializations; } }
+    
+    // typeGenericContextDescriptorHeader
+    var typeGenericContextDescriptorHeader: UnsafePointer<TypeGenericContextDescriptorHeader>? { mutating get { return Self.getTypeGenericContextDescriptorHeader(&self); } }
+    static func getTypeGenericContextDescriptorHeader<T : TypeContextDescriptorInterface>(_ data: UnsafePointer<T>) -> UnsafePointer<TypeGenericContextDescriptorHeader>? {
+        if (data.pointee.flags.isGeneric) {
+            return UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
+        } else {
+            return nil;
+        }
+    }
+    // genericParamDescriptors
+    var numParams: UInt32 { mutating get { return Self.getNumParams(&self); } }
+    static func getNumParams<T : TypeContextDescriptorInterface>(_ data: UnsafePointer<T>) -> UInt32 {
+        if (data.pointee.flags.isGeneric) {
+            return UInt32(UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1))).pointee.base.numParams);
+        } else {
+            return 0;
+        }
+    }
+    var genericParamDescriptors: UnsafeBufferPointer<GenericParamDescriptor>? { mutating get { return Self.getGenericParamDescriptors(&self); } }
+    static func getGenericParamDescriptors<T : TypeContextDescriptorInterface>(_ data: UnsafePointer<T>) -> UnsafeBufferPointer<GenericParamDescriptor>? {
+        if (data.pointee.flags.isGeneric) {
+            let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
+            if (ptr.pointee.base.numParams > 0) {
+                return Optional(UnsafeBufferPointer(start:UnsafePointer<GenericParamDescriptor>(OpaquePointer(ptr.advanced(by:1))), count:Int(ptr.pointee.base.numParams)));
+            } else {
+                return nil;
+            }
+        } else {
+            return nil;
+        }
+    }
 }
 
 struct TypeContextDescriptor : TypeContextDescriptorInterface {
@@ -429,7 +461,7 @@ extension StructDescriptor {
     static func getForeignMetadataInitialization(_ data: UnsafePointer<StructDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
         if (data.pointee.hasForeignMetadataInitialization) {
             let offset = Self._getForeignMetadataInitializationOffset(data);
-            return Optional(UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:offset).assumingMemoryBound(to:ForeignMetadataInitialization.self));
+            return Optional(UnsafeRawPointer(data.advanced(by:1)).advanced(by:offset).assumingMemoryBound(to:ForeignMetadataInitialization.self));
         } else {
             return nil;
         }
@@ -505,6 +537,7 @@ struct EnumDescriptor : ValueTypeDescriptorInterface {
     fileprivate let _fieldDescriptor: RelativeDirectPointer;
     fileprivate let _numPayloadCasesAndPayloadSizeOffset: UInt32;
     let numEmptyCases: UInt32;
+    // TypeGenericContextDescriptorHeader
     // ForeignMetadataInitialization
     // SingletonMetadataInitialization
     // CanonicalSpecializedMetadatasListCount
@@ -518,10 +551,18 @@ extension EnumDescriptor {
     var payloadSizeOffset: UInt32 { get { return ((self._numPayloadCasesAndPayloadSizeOffset & 0xFF000000) >> 24); } }
     var hasPayloadSizeOffset: Bool { get { return self.payloadSizeOffset != 0; } }
     // foreignMetadataInitialization
+    fileprivate static func _getForeignMetadataInitializationOffset(_ data: UnsafePointer<EnumDescriptor>) -> Int {
+        if (data.pointee.flags.isGeneric) {
+            let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
+            return TypeGenericContextDescriptorHeader.getTypeGenericContextDataSize(ptr);
+        }
+        return 0;
+    }
     var foreignMetadataInitialization: UnsafePointer<ForeignMetadataInitialization>? { mutating get { return Self.getForeignMetadataInitialization(&self); } }
     static func getForeignMetadataInitialization(_ data: UnsafePointer<EnumDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
         if (data.pointee.hasSingletonMetadataInitialization) {
-            return UnsafePointer<ForeignMetadataInitialization>(OpaquePointer(data.advanced(by:1)));
+            let offset = Self._getForeignMetadataInitializationOffset(data);
+            return Optional(UnsafeRawPointer(data.advanced(by:1)).advanced(by:offset).assumingMemoryBound(to:ForeignMetadataInitialization.self));
         } else {
             return nil;
         }
@@ -620,37 +661,6 @@ extension ClassDescriptor {
     static func getSuperclassType(_ data: UnsafePointer<ClassDescriptor>) -> String? {
         if let ptr = UnsafeMutablePointer<ClassDescriptor>(mutating:data).pointee._superclassType.pointer {
             return Optional(String(cString:UnsafePointer<CChar>(ptr)));
-        } else {
-            return nil;
-        }
-    }
-    // typeGenericContextDescriptorHeader
-    var typeGenericContextDescriptorHeader: UnsafePointer<TypeGenericContextDescriptorHeader>? { mutating get { return Self.getTypeGenericContextDescriptorHeader(&self); } }
-    static func getTypeGenericContextDescriptorHeader(_ data: UnsafePointer<ClassDescriptor>) -> UnsafePointer<TypeGenericContextDescriptorHeader>? {
-        if (data.pointee.flags.isGeneric) {
-            return UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
-        } else {
-            return nil;
-        }
-    }
-    // genericParamDescriptors
-    var numParams: UInt32 { mutating get { return Self.getNumParams(&self); } }
-    static func getNumParams(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
-        if (data.pointee.flags.isGeneric) {
-            return UInt32(UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1))).pointee.base.numParams);
-        } else {
-            return 0;
-        }
-    }
-    var genericParamDescriptors: UnsafeBufferPointer<GenericParamDescriptor>? { mutating get { return Self.getGenericParamDescriptors(&self); } }
-    static func getGenericParamDescriptors(_ data: UnsafePointer<ClassDescriptor>) -> UnsafeBufferPointer<GenericParamDescriptor>? {
-        if (data.pointee.flags.isGeneric) {
-            let ptr = UnsafePointer<TypeGenericContextDescriptorHeader>(OpaquePointer(data.advanced(by:1)));
-            if (ptr.pointee.base.numParams > 0) {
-                return Optional(UnsafeBufferPointer(start:UnsafePointer<GenericParamDescriptor>(OpaquePointer(ptr.advanced(by:1))), count:Int(ptr.pointee.base.numParams)));
-            } else {
-                return nil;
-            }
         } else {
             return nil;
         }

@@ -17,6 +17,7 @@ let MetadataKindIsNonType: UInt32 = 0x400;
 let MetadataKindIsNonHeap: UInt32 = 0x200;
 let MetadataKindIsRuntimePrivate: UInt32 = 0x100;
 enum MetadataKind : UInt32 {
+    case Unknown = 1;  // not include by source code
     case Class = 0;
     case Struct = 0x200;  //  0 | MetadataKindIsNonHeap
     case Enum = 0x201;  // 1 | MetadataKindIsNonHeap
@@ -49,8 +50,15 @@ struct Metadata : MetadataInterface {
     let kindRawValue: UInt;
 }
 
+extension Metadata {
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return true;
+    }
+}
+
 protocol MetadataInterface {
     var kindRawValue: UInt { get }
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool;
 }
 fileprivate let MetadataInterface_LastEnumerated: UInt = 0x7FF;
 extension MetadataInterface {
@@ -60,7 +68,7 @@ extension MetadataInterface {
             if (self.kindRawValue > MetadataInterface_LastEnumerated) {
                 return .Class;
             }
-            return MetadataKind(rawValue:UInt32(self.kindRawValue)) ?? .Class;
+            return MetadataKind(rawValue:UInt32(self.kindRawValue)) ?? .Unknown;
         }
     }
     var isClassObject: Bool { mutating get { return self.kind == .Class; } }
@@ -158,11 +166,52 @@ struct ExistentialTypeMetadata : MetadataInterface {
     // ProtocolDescriptorRef
 }
 
+extension ExistentialTypeMetadata {
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .Existential;
+    }
+}
+
 /***
  * HeapMetadata
  ***/
 struct HeapMetadata : HeapMetadataInterface {
     let kindRawValue: UInt;
+}
+
+extension HeapMetadata {
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return (data.pointee.kind == .Class || data.pointee.kind == .ObjCClassWrapper);
+    }
+}
+
+/***
+ *TupleTypeMetadata
+ ***/
+struct TupleTypeMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let numElements: Int;
+    fileprivate let _labels: UnsafePointer<CChar>;
+    struct Element {
+        let type: UnsafePointer<Metadata>;
+        let offset: Int;
+    }
+}
+
+extension TupleTypeMetadata {
+    var labels: String { get { return String(cString:self._labels); } }
+    // Element
+    var elements: UnsafeBufferPointer<Element> { mutating get { return Self.getElements(&self); } }
+    static func getElements( _ data: UnsafePointer<TupleTypeMetadata>) -> UnsafeBufferPointer<Element> {
+        return UnsafeBufferPointer<Element>(start:UnsafeRawPointer(data.advanced(by:1)).assumingMemoryBound(to:Element.self), count:data.pointee.numElements);
+    }
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .Tuple;
+    }
+}
+
+struct TupleTypeMetadata_Element {
+    
 }
 
 protocol HeapMetadataInterface : MetadataInterface {
@@ -189,6 +238,152 @@ extension HeapMetadataInterface {
 struct HeapObject {
     let metadata: UnsafePointer<HeapMetadata>;
     let refCounts: size_t;
+}
+
+struct MetadataTrailingFlags {
+    fileprivate let _value: UInt64;
+    init(_ val: UInt64) {
+        self._value = val;
+    }
+}
+
+extension MetadataTrailingFlags {
+    fileprivate static let IsStaticSpecialization: UInt64 = 0;
+    fileprivate static let IsCanonicalStaticSpecialization: UInt64 = 1;
+    var isStaticSpecialization: Bool { get { return (self._value & (1 << Self.IsStaticSpecialization)) != 0; } }
+    var isCanonicalStaticSpecialization: Bool { get { return (self._value & (1 << Self.IsCanonicalStaticSpecialization)) != 0; } }
+}
+
+/***
+ * StructMetadata
+ ***/
+struct StructMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let description: UnsafePointer<StructDescriptor>;
+}
+
+extension StructMetadata {
+    // fieldOffsets
+    var fieldOffsets: UnsafePointer<UInt32>? { mutating get { return Self.getFieldOffsets(&self); } };
+    static func getFieldOffsets(_ data: UnsafePointer<StructMetadata>) -> UnsafePointer<UInt32>? {
+        if (0 != data.pointee.description.pointee.fieldOffsetVectorOffset) {
+            return UnsafeRawPointer(data).advanced(by:Int(data.pointee.description.pointee.fieldOffsetVectorOffset) * MemoryLayout<OpaquePointer>.size).assumingMemoryBound(to:UInt32.self);
+        } else {
+            return nil;
+        }
+    }
+    // isStaticallySpecializedGenericMetadata
+    var isStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsStaticallySpecializedGenericMetadata(&self); } }
+    static func getIsStaticallySpecializedGenericMetadata(_ data: UnsafePointer<StructMetadata>) -> Bool {
+        if (false == data.pointee.description.pointee.flags.isGeneric) {
+            return false;
+        }
+        if let trailingFlags = Self.getTrailingFlags(data) {
+            return trailingFlags.pointee.isStaticSpecialization;
+        } else {
+            return false;
+        }
+    }
+    // isCanonicalStaticallySpecializedGenericMetadata
+    var isCanonicalStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsCanonicalStaticallySpecializedGenericMetadata(&self); } }
+    static func getIsCanonicalStaticallySpecializedGenericMetadata(_ data: UnsafePointer<StructMetadata>) -> Bool {
+        if (false == data.pointee.description.pointee.flags.isGeneric) {
+            return false;
+        }
+        if let trailingFlags = Self.getTrailingFlags(data) {
+            return trailingFlags.pointee.isCanonicalStaticSpecialization;
+        } else {
+            return false;
+        }
+    }
+    // trailingFlags
+    var trailingFlags: UnsafePointer<MetadataTrailingFlags>? { mutating get { return Self.getTrailingFlags(&self); } }
+    static func getTrailingFlags(_ data: UnsafePointer<StructMetadata>) -> UnsafePointer<MetadataTrailingFlags>? {
+        let des = UnsafeMutablePointer<StructDescriptor>(mutating:data.pointee.description);
+        if let header = des.pointee.typeGenericContextDescriptorHeader {
+            if let flags = TypeGenericContextDescriptorHeader.getDefaultInstantiationPattern(header)?.pointee.patternFlags {
+                if (!flags.hasTrailingFlags) {
+                    return nil;
+                }
+                let offset = Int(des.pointee.fieldOffsetVectorOffset) + (Int(des.pointee.numFields) * MemoryLayout<UInt32>.size + MemoryLayout<OpaquePointer>.size - 1) / MemoryLayout<OpaquePointer>.size;
+                return Optional(UnsafeRawPointer(data).advanced(by:offset * MemoryLayout<OpaquePointer>.size).assumingMemoryBound(to:MetadataTrailingFlags.self));
+            } else {
+                return nil;
+            }
+        } else {
+            return nil;
+        }
+    }
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .Struct;
+    }
+}
+
+/***
+ * EnumMetadata
+ ***/
+struct EnumMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let description: UnsafePointer<EnumDescriptor>;
+}
+
+extension EnumMetadata {
+    var hasPayloadSize: Bool { get { return self.description.pointee.hasPayloadSizeOffset; } }
+    // payloadSize
+    var payloadSize: UnsafePointer<Int>? { mutating get { return Self.getPayloadSize(&self); } }
+    static func getPayloadSize(_ data: UnsafePointer<EnumMetadata>) -> UnsafePointer<Int>? {
+        if (data.pointee.hasPayloadSize) {
+            let offset = data.pointee.description.pointee.payloadSizeOffset;
+            return UnsafePointer<Int>(OpaquePointer(data)).advanced(by:Int(offset));
+        } else {
+            return nil;
+        }
+    }
+    // isStaticallySpecializedGenericMetadata
+    var isStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsStaticallySpecializedGenericMetadata(&self); } }
+    static func getIsStaticallySpecializedGenericMetadata(_ data: UnsafePointer<EnumMetadata>) -> Bool {
+        if (false == data.pointee.description.pointee.flags.isGeneric) {
+            return false;
+        }
+        if let trailingFlags = Self.getTrailingFlags(data) {
+            return trailingFlags.pointee.isStaticSpecialization;
+        } else {
+            return false;
+        }
+    }
+    // isCanonicalStaticallySpecializedGenericMetadata
+    var isCanonicalStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsCanonicalStaticallySpecializedGenericMetadata(&self); } }
+    static func getIsCanonicalStaticallySpecializedGenericMetadata(_ data: UnsafePointer<EnumMetadata>) -> Bool {
+        if (false == data.pointee.description.pointee.flags.isGeneric) {
+            return false;
+        }
+        if let trailingFlags = Self.getTrailingFlags(data) {
+            return trailingFlags.pointee.isCanonicalStaticSpecialization;
+        } else {
+            return false;
+        }
+    }
+    // trailingFlags
+    var trailingFlags: UnsafePointer<MetadataTrailingFlags>? { mutating get { return Self.getTrailingFlags(&self); } }
+    static func getTrailingFlags(_ data: UnsafePointer<EnumMetadata>) -> UnsafePointer<MetadataTrailingFlags>? {
+        let des = UnsafeMutablePointer<EnumDescriptor>(mutating:data.pointee.description);
+        if let header = des.pointee.typeGenericContextDescriptorHeader {
+            if let flags = TypeGenericContextDescriptorHeader.getDefaultInstantiationPattern(header)?.pointee.patternFlags {
+                if (!flags.hasTrailingFlags) {
+                    return nil;
+                }
+                let offset = MemoryLayout<EnumMetadata>.size / MemoryLayout<OpaquePointer>.size + Int(header.pointee.base.numArguments) + (data.pointee.hasPayloadSize ? 1 : 0);
+                return Optional(UnsafeRawPointer(data).advanced(by:offset * MemoryLayout<OpaquePointer>.size).assumingMemoryBound(to:MetadataTrailingFlags.self));
+            } else {
+                return nil;
+            }
+        } else {
+            return nil;
+        }
+    }
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return (data.pointee.kind == .Enum || data.pointee.kind == .Optional);
+    }
 }
 
 // MARK: -
@@ -220,6 +415,12 @@ struct AnyClassMetadata : AnyClassMetadataInterface {
     let cache1: uintptr_t;
     let data: UInt;
 };
+
+extension AnyClassMetadata {
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return (data.pointee.kind == .Class || data.pointee.kind == .ObjCClassWrapper);
+    }
+}
 
 /***
  * ClassMetadata
@@ -278,12 +479,39 @@ extension ClassMetadata {
             return list;
         }
     }
+    // genericParams
+    var genericParams: UnsafeBufferPointer<UnsafePointer<Metadata>>? { mutating get { return Self.getGenericParams(&self); } }
+    static func getGenericParams(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<UnsafePointer<Metadata>>? {
+        let numParams = Int(ClassDescriptor.getNumParams(cls.pointee.description));
+        if (numParams > 0) {
+            var offset = 0;
+            if (numParams > 1) {
+                offset = Int(cls.pointee.classSize - cls.pointee.classAddressPoint) - (numParams + 1) * MemoryLayout<OpaquePointer>.size;
+            } else {
+                offset = MemoryLayout<ClassMetadata>.size;
+            }
+            return Optional(UnsafeBufferPointer<UnsafePointer<Metadata>>(start:UnsafeRawPointer(cls).advanced(by:offset).assumingMemoryBound(to:UnsafePointer<Metadata>.self), count:numParams));
+        } else {
+            return nil;
+        }
+    }
     // virtual methods
     var virtualMethods: UnsafeBufferPointer<FunctionPointer> { mutating get { return Self.getVirtualMethods(&self); } }
     static func getVirtualMethods(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<FunctionPointer> {
-        let offset = MemoryLayout<ClassMetadata>.size + Int(ClassDescriptor.getNumParams(cls.pointee.description)) * 8;
-        let size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
+        let numParams = Int(ClassDescriptor.getNumParams(cls.pointee.description));
+        var offset = 0;
+        var size = 0;
+        if (numParams > 1) {
+            offset = MemoryLayout<ClassMetadata>.size;
+            size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset - numParams * MemoryLayout<OpaquePointer>.size) / MemoryLayout<uintptr_t>.size - 1/*init function*/;
+        } else {
+            offset = MemoryLayout<ClassMetadata>.size + MemoryLayout<OpaquePointer>.size;
+            size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
+        }
         let bastPtr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:offset);
         return UnsafeBufferPointer(start:UnsafePointer<FunctionPointer>(OpaquePointer(bastPtr)), count:size);
+    }
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .Class;
     }
 }
