@@ -288,11 +288,11 @@ extension TypeContextDescriptorInterface {
         }
     }
     
-    var typgetTypeContextDescriptorFlags: TypeContextDescriptorFlags { get { return TypeContextDescriptorFlags(self.flags.kindSpecificFlags) } }
-    var metadataInitialization: MetadataInitializationKind { get { return self.typgetTypeContextDescriptorFlags.metadataInitialization; } }
-    var hasSingletonMetadataInitialization: Bool { get { return self.typgetTypeContextDescriptorFlags.hasSingletonMetadataInitialization; } }
-    var hasForeignMetadataInitialization: Bool { get { return self.typgetTypeContextDescriptorFlags.hasForeignMetadataInitialization; } }
-    var hasCanonicicalMetadataPrespecializations: Bool { get { return self.typgetTypeContextDescriptorFlags.hasCanonicalMetadataPrespecializations; } }
+    var typeContextDescriptorFlags: TypeContextDescriptorFlags { get { return TypeContextDescriptorFlags(self.flags.kindSpecificFlags) } }
+    var metadataInitialization: MetadataInitializationKind { get { return self.typeContextDescriptorFlags.metadataInitialization; } }
+    var hasSingletonMetadataInitialization: Bool { get { return self.typeContextDescriptorFlags.hasSingletonMetadataInitialization; } }
+    var hasForeignMetadataInitialization: Bool { get { return self.typeContextDescriptorFlags.hasForeignMetadataInitialization; } }
+    var hasCanonicicalMetadataPrespecializations: Bool { get { return self.typeContextDescriptorFlags.hasCanonicalMetadataPrespecializations; } }
     
     // typeGenericContextDescriptorHeader
     var typeGenericContextDescriptorHeader: UnsafePointer<TypeGenericContextDescriptorHeader>? { mutating get { return Self.getTypeGenericContextDescriptorHeader(&self); } }
