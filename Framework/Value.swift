@@ -9,6 +9,7 @@ import Foundation
 
 struct RelativeContextPointer {
     fileprivate let _value: Int32;
+    var rawvalue: Int32 { get { return self._value; } }
     var pointer: OpaquePointer? { mutating get { return Self.getPointer(&self); } }
     static func getPointer(_ ptr: UnsafePointer<RelativeContextPointer>) -> OpaquePointer? {
         if (0 != ptr.pointee._value) {
@@ -25,6 +26,7 @@ struct RelativeContextPointer {
 
 struct RelativeDirectPointer {
     fileprivate let _value: Int32;
+    var rawvalue: Int32 { get { return self._value; } }
     var pointer: OpaquePointer? { mutating get { return Self.getPointer(&self); } }
     static func getPointer(_ ptr: UnsafePointer<RelativeDirectPointer>) -> OpaquePointer? {
         if (0 != ptr.pointee._value) {

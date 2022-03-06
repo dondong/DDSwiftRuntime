@@ -257,6 +257,7 @@ extension TypeContextDescriptorFlags {
 }
 
 protocol TypeContextDescriptorInterface : ContextDescriptorInterface {
+    var genericArgumentOffset: Int32 { mutating get };
 }
 
 extension TypeContextDescriptorInterface {
@@ -334,6 +335,10 @@ struct TypeContextDescriptor : TypeContextDescriptorInterface {
     fileprivate let _accessFunction: RelativeDirectPointer;
     fileprivate let _fieldDescriptor: RelativeDirectPointer;
 };
+
+extension TypeContextDescriptor {
+    var genericArgumentOffset: Int32 { get { return 0; } }
+}
 
 // MARK: -
 // MARK: Extension
@@ -521,7 +526,8 @@ extension StructDescriptor {
             return 0;
         }
     }
-    
+    // genericArgumentOffset
+    var genericArgumentOffset: Int32 { get { return 0; } }
 }
 
 // MARK: -
@@ -621,6 +627,8 @@ extension EnumDescriptor {
             return 0;
         }
     }
+    // genericArgumentOffset
+    var genericArgumentOffset: Int32 { get { return 0; } }
 }
 
 // MARK: -
@@ -628,6 +636,18 @@ extension EnumDescriptor {
 /***
  * ClassDescriptor
  ***/
+struct ExtraClassDescriptorFlags {
+    let _value: UInt32;
+    init(_ val: UInt32) {
+        self._value = val;
+    }
+}
+
+extension ExtraClassDescriptorFlags {
+    fileprivate static let HasObjCResilientClassStub: UInt32 = 0;
+    var hasObjCResilientClassStub: Bool { get { return (self._value & (1 << Self.HasObjCResilientClassStub)) != 0; } }
+}
+
 struct ClassDescriptor : TypeContextDescriptorInterface {
     let flags: ContextDescriptorFlags;
     fileprivate let _parent: RelativeDirectPointer;
@@ -635,8 +655,8 @@ struct ClassDescriptor : TypeContextDescriptorInterface {
     fileprivate let _accessFunction: RelativeDirectPointer;
     fileprivate let _fieldDescriptor: RelativeDirectPointer;
     fileprivate var _superclassType: RelativeDirectPointer;
-    let metadataNegativeSizeInWords: UInt32;  // resilientMetadataBounds: RelativeDirectPointer
-    let metadataPositiveSizeInWords: UInt32;  // extraClassFlags: UInt32
+    fileprivate var _resilientMetadataBounds: RelativeDirectPointer;  // metadataNegativeSizeInWords : UInt32
+    let metadataPositiveSizeInWords: UInt32;  // extraClassFlags: ExtraClassDescriptorFlags
     let numImmediateMembers: UInt32;
     let numFields: UInt32;
     let fieldOffsetVectorOffset: UInt32;
@@ -656,6 +676,77 @@ struct ClassDescriptor : TypeContextDescriptorInterface {
 };
 
 extension ClassDescriptor {
+    var metadataNegativeSizeInWords: UInt32 { get { return UInt32(self._resilientMetadataBounds.rawvalue); } }
+    var extraClassFlags: ExtraClassDescriptorFlags { get { return ExtraClassDescriptorFlags(self.metadataPositiveSizeInWords); } }
+    var areImmediateMembersNegative: Bool { get { return self.typeContextDescriptorFlags.class_areImmediateMembersNegative; } }
+    var resilientSuperclassReferenceKind: TypeReferenceKind { get { return self.typeContextDescriptorFlags.class_ResilientSuperclassReferenceKind; } }
+    
+    var genericArgumentOffset: Int32 {
+        mutating get {
+            if (!self.flags.hasResilientSuperclass) {
+                return self.nonResilientImmediateMembersOffset;
+            }
+            return self.resilientImmediateMembersOffset;
+        }
+    }
+    
+    // metadataBounds
+    var metadataBounds: ClassMetadataBounds { mutating get { return Self.getMetadataBounds(&self); } }
+    static func getMetadataBounds(_ data: UnsafePointer<ClassDescriptor>) -> ClassMetadataBounds {
+        if (data.pointee.flags.hasResilientSuperclass) {
+            return Self.getResilientMetadataBounds(data)!;
+        } else {
+            return data.pointee.nonResilientMetadataBounds;
+        }
+    }
+    // nonResilientImmediateMembersOffset
+    var nonResilientImmediateMembersOffset: Int32 {
+        get {
+            if (!self.flags.hasResilientSuperclass) {
+                return self.areImmediateMembersNegative ? -Int32(self.metadataNegativeSizeInWords) : Int32(self.metadataPositiveSizeInWords - self.numImmediateMembers);
+            } else {
+                return 0;
+            }
+        }
+    }
+    // nonResilientMetadataBounds
+    var nonResilientMetadataBounds: ClassMetadataBounds { get { return ClassMetadataBounds(Int(self.nonResilientImmediateMembersOffset) * MemoryLayout<OpaquePointer>.size, self.metadataNegativeSizeInWords, self.metadataPositiveSizeInWords); } }
+    // resilientImmediateMembersOffset
+    var resilientImmediateMembersOffset: Int32 { mutating get { return Self.getResilientImmediateMembersOffset(&self); } }
+    fileprivate static func _getResilientMetadataBounds(_ data: UnsafePointer<ClassDescriptor>) ->  UnsafePointer<StoredClassMetadataBounds>? {
+        if (data.pointee.flags.hasResilientSuperclass) {
+            return UnsafePointer<StoredClassMetadataBounds>(UnsafeMutablePointer<ClassDescriptor>(mutating:data).pointee._resilientMetadataBounds.pointer);
+        } else {
+            return nil;
+        }
+    }
+    static func getResilientImmediateMembersOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int32 {
+        if let storedBoundsPtr = Self._getResilientMetadataBounds(data) {
+            var result = 0;
+            if (storedBoundsPtr.pointee.tryGetImmediateMembersOffset(&result)) {
+                return Int32(result / MemoryLayout<OpaquePointer>.size);
+            }
+            var storedBounds = storedBoundsPtr.pointee;
+            let bounds = computeMetadataBoundsFromSuperclass(data, &storedBounds);
+            return Int32(Int(bounds.immediateMembersOffset) / MemoryLayout<OpaquePointer>.size);
+        } else {
+            return 0;
+        }
+    }
+    // resilientMetadataBounds
+    var resilientMetadataBounds: ClassMetadataBounds? { mutating get { Self.getResilientMetadataBounds(&self); } }
+    static func getResilientMetadataBounds(_ data: UnsafePointer<ClassDescriptor>) -> ClassMetadataBounds? {
+        if let storedBoundsPtr = Self._getResilientMetadataBounds(data) {
+            var bounds = ClassMetadataBounds(0, 0, 0);
+            if (storedBoundsPtr.pointee.tryGet(&bounds)) {
+                return bounds;
+            }
+            var storedBounds = storedBoundsPtr.pointee;
+            return computeMetadataBoundsFromSuperclass(data, &storedBounds);
+        } else {
+            return nil;
+        }
+    }
     // superclassType
     var superclassType: String? { mutating get { return Self.getSuperclassType(&self); } }
     static func getSuperclassType(_ data: UnsafePointer<ClassDescriptor>) -> String? {
@@ -665,7 +756,7 @@ extension ClassDescriptor {
             return nil;
         }
     }
-    // ResilientSuperclass
+    // resilientSuperclass
     fileprivate static func _getResilientSuperclassOffset(_ data: UnsafePointer<ClassDescriptor>) -> Int {
         var offset = 0;
         if (data.pointee.flags.isGeneric) {
@@ -1531,5 +1622,31 @@ extension CanonicalSpecializedMetadatasCachingOnceToken {
     static func getToken(_ data: UnsafePointer<CanonicalSpecializedMetadatasCachingOnceToken>) -> CLong {
         let ptr = UnsafeMutablePointer<CanonicalSpecializedMetadatasCachingOnceToken>(mutating:data).pointee._token.pointer!
         return UnsafePointer<CLong>(ptr).pointee;
+    }
+}
+
+
+fileprivate func computeMetadataBoundsFromSuperclass(_ description: UnsafePointer<ClassDescriptor>, _ storedBounds: inout StoredClassMetadataBounds) -> ClassMetadataBounds {
+    var bounds: ClassMetadataBounds;
+    if let superRef = ClassDescriptor.getResilientSuperclass(description) {
+        bounds = computeMetadataBoundsForSuperclass(OpaquePointer(superRef), description.pointee.resilientSuperclassReferenceKind) ?? ClassMetadataBounds.forSwiftRootClass();
+    } else {
+        bounds = ClassMetadataBounds.forSwiftRootClass();
+    }
+    bounds.adjustForSubclass(description.pointee.areImmediateMembersNegative,
+                             description.pointee.numImmediateMembers);
+    storedBounds.initialize(bounds);
+    return bounds;
+}
+
+fileprivate func computeMetadataBoundsForSuperclass(_ ref: OpaquePointer, _ refKind: TypeReferenceKind) -> ClassMetadataBounds? {
+    switch (refKind) {
+    case .IndirectTypeDescriptor, .DirectTypeDescriptor:
+        let description = UnsafePointer<ClassDescriptor>(ref);
+        return Optional(ClassDescriptor.getMetadataBounds(description));
+//    case .DirectObjCClassName: // to do
+//    case .IndirectObjCClass: // to do
+    default:
+        return nil;
     }
 }

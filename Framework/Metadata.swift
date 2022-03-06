@@ -484,12 +484,7 @@ extension ClassMetadata {
     static func getGenericParams(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<UnsafePointer<Metadata>>? {
         let numParams = Int(ClassDescriptor.getNumParams(cls.pointee.description));
         if (numParams > 0) {
-            var offset = 0;
-            if (numParams > 1) {
-                offset = Int(cls.pointee.classSize - cls.pointee.classAddressPoint) - (numParams + 1) * MemoryLayout<OpaquePointer>.size;
-            } else {
-                offset = MemoryLayout<ClassMetadata>.size;
-            }
+            let offset = Int(UnsafeMutablePointer<ClassDescriptor>(mutating:cls.pointee.description).pointee.genericArgumentOffset) * MemoryLayout<OpaquePointer>.size;
             return Optional(UnsafeBufferPointer<UnsafePointer<Metadata>>(start:UnsafeRawPointer(cls).advanced(by:offset).assumingMemoryBound(to:UnsafePointer<Metadata>.self), count:numParams));
         } else {
             return nil;
@@ -513,5 +508,84 @@ extension ClassMetadata {
     }
     static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
         return data.pointee.kind == .Class;
+    }
+}
+
+/***
+ * MetadataBounds
+ ***/
+struct MetadataBounds {
+    var negativeSizeInWords: UInt32;
+    var positiveSizeInWords: UInt32;
+}
+
+extension MetadataBounds {
+    var totalSizeInBytes: Int { get { return Int(self.negativeSizeInWords) + Int(self.positiveSizeInWords) * MemoryLayout<OpaquePointer>.size; } }
+    var addressPointInBytes: Int { get { return Int(self.negativeSizeInWords) * MemoryLayout<OpaquePointer>.size; } }
+}
+
+/***
+ * StoredClassMetadataBounds
+ ***/
+struct StoredClassMetadataBounds {
+    var immediateMembersOffset: Int
+    var bounds: MetadataBounds;
+}
+
+extension StoredClassMetadataBounds {
+    func tryGetImmediateMembersOffset(_ output: inout Int) -> Bool {
+//        output = self.immediateMembersOffset.load(std::memory_order_relaxed);
+        output = self.immediateMembersOffset;
+        return (output != 0);
+    }
+    func tryGet(_ output : inout ClassMetadataBounds) -> Bool {
+        let offset = self.immediateMembersOffset;
+        if (offset == 0) { return false; }
+
+        output.immediateMembersOffset = offset;
+        output.negativeSizeInWords = self.bounds.negativeSizeInWords;
+        output.positiveSizeInWords = self.bounds.positiveSizeInWords;
+        return true;
+    }
+    mutating func initialize(_ value: ClassMetadataBounds) {
+        if (value.immediateMembersOffset != 0) {
+            self.bounds.negativeSizeInWords = value.negativeSizeInWords;
+            self.bounds.positiveSizeInWords = value.positiveSizeInWords;
+            self.immediateMembersOffset = value.immediateMembersOffset;
+        }
+    }
+}
+
+
+/***
+ * ClassMetadataBounds
+ ***/
+struct ClassMetadataBounds {
+    var negativeSizeInWords: UInt32;
+    var positiveSizeInWords: UInt32;
+    var immediateMembersOffset: Int;
+    init(_ immediateMembersOffset: Int, _ negativeSizeInWords: UInt32, _ positiveSizeInWords: UInt32) {
+        self.immediateMembersOffset = immediateMembersOffset;
+        self.negativeSizeInWords = negativeSizeInWords;
+        self.positiveSizeInWords = positiveSizeInWords;
+    }
+}
+
+extension ClassMetadataBounds {
+    mutating func adjustForSubclass(_ areImmediateMembersNegative: Bool, _ numImmediateMembers: UInt32) {
+      if (areImmediateMembersNegative) {
+          self.negativeSizeInWords += UInt32(numImmediateMembers);
+          self.immediateMembersOffset = -Int(self.negativeSizeInWords) * MemoryLayout<OpaquePointer>.size;
+      } else {
+          self.immediateMembersOffset = Int(self.positiveSizeInWords) * MemoryLayout<OpaquePointer>.size;
+          self.positiveSizeInWords += UInt32(numImmediateMembers);
+      }
+    }
+    static func forSwiftRootClass() -> ClassMetadataBounds {
+        let addressPoint: Int = 16;
+        let totoalSize: Int = MemoryLayout<ClassMetadata>.size;
+        return ClassMetadataBounds(totoalSize - addressPoint,
+                                   UInt32(addressPoint / MemoryLayout<OpaquePointer>.size),
+                                   UInt32((totoalSize - addressPoint) / MemoryLayout<OpaquePointer>.size));
     }
 }
