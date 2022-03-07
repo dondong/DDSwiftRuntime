@@ -8,9 +8,6 @@
 import Foundation
 
 class SwiftBaseClass {
-    func xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx() {
-        ObjClass.classTest();
-    }
     func test() {
         print("SwiftBaseClass test");
     }
@@ -38,6 +35,10 @@ class SwiftClass : SwiftBaseClass {
     override func testB() {
         super.testB();
         print("SwiftClass testB");
+    }
+    
+    func testD() {
+        print("SwiftClass testD");
     }
 }
 

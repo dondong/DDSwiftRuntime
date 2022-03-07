@@ -819,6 +819,15 @@ extension ClassDescriptor {
         }
         return offset;
     }
+    var vTableOffset: UInt32 { mutating get { return Self.getVTableOffset(&self); } }
+    static func getVTableOffset(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
+        if (data.pointee.hasVTable) {
+            let ptr = UnsafeRawPointer(OpaquePointer(data.advanced(by:1))).advanced(by:self._getVtableOffset(data)).assumingMemoryBound(to:VTableDescriptorHeader.self);
+            return ptr.pointee.vTableOffset;
+        } else {
+            return 0;
+        }
+    }
     var vTableSize: UInt32 { mutating get { return Self.getVTableSize(&self); } }
     static func getVTableSize(_ data: UnsafePointer<ClassDescriptor>) -> UInt32 {
         if (data.pointee.hasVTable) {

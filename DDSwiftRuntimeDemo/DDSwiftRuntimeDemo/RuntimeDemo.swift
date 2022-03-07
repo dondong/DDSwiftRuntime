@@ -18,6 +18,16 @@ func printAllType() {
     }
 }
 
+func printAllProtocolConformance() {
+    let list = DDSwiftRuntime.getMainSwiftProtocolConformanceList();
+    for i in 0..<list.count {
+        print("***********************************************");
+        print("protocol conformance index:", i);
+        printProtocolConformanceDescriptor(list[i]);
+        print("");
+    }
+}
+
 func printClass() {
     if let metadata = DDSwiftRuntime.getSwiftClassMetadata(SwiftBaseClass.self) {
         printClassMetadata(metadata);
@@ -108,11 +118,13 @@ fileprivate func printClassMetadata(_ data: UnsafePointer<ClassMetadata>) {
             }
         }
     }
-    print("function table:")
-    let virtualMethods = metadata.pointee.virtualMethods;
-    for i in 0..<virtualMethods.count {
-        print("\(i).  name:", virtualMethods[i].functionName);
-        print("    address:", virtualMethods[i]);
+    let vtable = metadata.pointee.vtable;
+    if (vtable.count > 0) {
+        print("vtable:");
+        for i in 0..<vtable.count {
+            print("\(i).  name:", vtable[i].functionName);
+            print("    address:", vtable[i]);
+        }
     }
     
     print("***** ClassDescriptor *****");

@@ -413,18 +413,19 @@ extension EnumMetadata {
 // MARK: -
 // MARK: ClassMetadata
 protocol AnyClassMetadataInterface : HeapMetadataInterface {
-    var superclass: OpaquePointer { get };
+    var superclass: UnsafePointer<AnyClassMetadata> { get };
     var cache0: UInt { get };
     var cache1: UInt { get };
     var data: UInt { get };
 }
 extension AnyClassMetadataInterface {
     // name
-    var name: String { mutating get { Self.getName(&self); } }
+    var name: String { mutating get { return Self.getName(&self); } }
     static func getName<T : AnyClassMetadataInterface>(_ cls: UnsafePointer<T>) -> String {
         return String.init(cString:class_getName(unsafeBitCast(cls, to:AnyClass.self)));
     }
-    
+    // isa
+    var isa: UnsafePointer<AnyClassMetadata> { get { return UnsafePointer<AnyClassMetadata>(OpaquePointer(bitPattern:self.kindRawValue)!); } }
     var isTypeMetadata: Bool { get { return self.data & 2 != 0; } }
     var isPureObjC: Bool { get { return !self.isTypeMetadata; } }
 }
@@ -434,7 +435,7 @@ extension AnyClassMetadataInterface {
  ***/
 struct AnyClassMetadata : AnyClassMetadataInterface {
     let kindRawValue: UInt;
-    let superclass: OpaquePointer;
+    let superclass: UnsafePointer<AnyClassMetadata>;
     let cache0: uintptr_t;
     let cache1: uintptr_t;
     let data: UInt;
@@ -459,7 +460,7 @@ enum ClassFlags : UInt32 {
 
 struct ClassMetadata : AnyClassMetadataInterface {
     let kindRawValue: UInt;
-    let superclass: OpaquePointer;
+    let superclass: UnsafePointer<AnyClassMetadata>;
     let cache0: UInt;
     let cache1: UInt;
     let data: UInt;
@@ -515,20 +516,20 @@ extension ClassMetadata {
         }
     }
     // virtual methods
-    var virtualMethods: UnsafeBufferPointer<FunctionPointer> { mutating get { return Self.getVirtualMethods(&self); } }
-    static func getVirtualMethods(_ data: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<FunctionPointer> {
-        let numParams = Int(ClassDescriptor.getNumParams(data.pointee.description));
-        var offset = 0;
-        var size = 0;
-        if (numParams > 1) {
-            offset = MemoryLayout<ClassMetadata>.size;
-            size = (Int(data.pointee.classSize) - Int(data.pointee.classAddressPoint) - offset - numParams * MemoryLayout<OpaquePointer>.size) / MemoryLayout<uintptr_t>.size - 1/*init function*/;
-        } else {
-            offset = MemoryLayout<ClassMetadata>.size + MemoryLayout<OpaquePointer>.size;
-            size = (Int(data.pointee.classSize) - Int(data.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
+    var vtable: [FunctionPointer] { mutating get { return Self.getVtable(&self); } }
+    static func getVtable(_ data: UnsafePointer<ClassMetadata>) -> [FunctionPointer] {
+        var list = [FunctionPointer]();
+        var ptr = UnsafePointer<AnyClassMetadata>(OpaquePointer(data));
+        while (ptr.pointee.isTypeMetadata) {
+            let des = UnsafeMutablePointer<ClassDescriptor>(mutating:UnsafePointer<ClassMetadata>(OpaquePointer(ptr)).pointee.description);
+            if (des.pointee.hasVTable) {
+                let offset = Int(des.pointee.vTableOffset) * MemoryLayout<OpaquePointer>.size;
+                let ptr = UnsafeRawPointer(data).advanced(by:offset).assumingMemoryBound(to:FunctionPointer.self);
+                list.insert(contentsOf:UnsafeBufferPointer<FunctionPointer>(start:ptr, count:Int(des.pointee.vTableSize)), at:0);
+            }
+            ptr = ptr.pointee.superclass;
         }
-        let bastPtr = UnsafeRawPointer(OpaquePointer(data)).advanced(by:offset);
-        return UnsafeBufferPointer(start:UnsafePointer<FunctionPointer>(OpaquePointer(bastPtr)), count:size);
+        return list;
     }
     static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
         return data.pointee.kind == .Class;

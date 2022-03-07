@@ -11,9 +11,9 @@ if let metadata = DDSwiftRuntime.getSwiftClassMetadata(Test<Int>.self) {
       print(args[i].pointee.kind);
     }
   }
-  let virtualMethods = metadata.pointee.virtualMethods;
-  for i in 0..<virtualMethods.count {
-    print(virtualMethods[i].functionName);
+  let vtable = metadata.pointee.vtable;
+  for i in 0..<vtable.count {
+    print(vtable[i].functionName);
   }
 }
 
