@@ -82,6 +82,8 @@ extension MetadataInterface {
             }
         }
     }
+    // genericArgs
+    var genericArgs: UnsafeBufferPointer<UnsafePointer<Metadata>>? { mutating get { return nil; } }
 }
 
 /***
@@ -275,7 +277,7 @@ extension StructMetadata {
     // isStaticallySpecializedGenericMetadata
     var isStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsStaticallySpecializedGenericMetadata(&self); } }
     static func getIsStaticallySpecializedGenericMetadata(_ data: UnsafePointer<StructMetadata>) -> Bool {
-        if (false == data.pointee.description.pointee.flags.isGeneric) {
+        if (false == data.pointee.description.pointee.isGeneric) {
             return false;
         }
         if let trailingFlags = Self.getTrailingFlags(data) {
@@ -287,7 +289,7 @@ extension StructMetadata {
     // isCanonicalStaticallySpecializedGenericMetadata
     var isCanonicalStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsCanonicalStaticallySpecializedGenericMetadata(&self); } }
     static func getIsCanonicalStaticallySpecializedGenericMetadata(_ data: UnsafePointer<StructMetadata>) -> Bool {
-        if (false == data.pointee.description.pointee.flags.isGeneric) {
+        if (false == data.pointee.description.pointee.isGeneric) {
             return false;
         }
         if let trailingFlags = Self.getTrailingFlags(data) {
@@ -317,6 +319,17 @@ extension StructMetadata {
     static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
         return data.pointee.kind == .Struct;
     }
+    // genericArgs
+    var genericArgs: UnsafeBufferPointer<UnsafePointer<Metadata>>? { mutating get { return Self.getGenericArgs(&self); } }
+    static func getGenericArgs(_ data: UnsafePointer<StructMetadata>) -> UnsafeBufferPointer<UnsafePointer<Metadata>>? {
+        if (data.pointee.description.pointee.isGeneric) {
+            let offset = Int(UnsafeMutablePointer<StructDescriptor>(mutating:data.pointee.description).pointee.genericArgumentOffset) * MemoryLayout<OpaquePointer>.size;
+            let num = Int(StructDescriptor.getTypeGenericContextDescriptorHeader(data.pointee.description)!.pointee.base.numArguments);
+            return Optional(UnsafeBufferPointer<UnsafePointer<Metadata>>(start:UnsafeRawPointer(data).advanced(by:offset).assumingMemoryBound(to:UnsafePointer<Metadata>.self), count:num));
+        } else {
+            return nil;
+        }
+    }
 }
 
 /***
@@ -342,7 +355,7 @@ extension EnumMetadata {
     // isStaticallySpecializedGenericMetadata
     var isStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsStaticallySpecializedGenericMetadata(&self); } }
     static func getIsStaticallySpecializedGenericMetadata(_ data: UnsafePointer<EnumMetadata>) -> Bool {
-        if (false == data.pointee.description.pointee.flags.isGeneric) {
+        if (false == data.pointee.description.pointee.isGeneric) {
             return false;
         }
         if let trailingFlags = Self.getTrailingFlags(data) {
@@ -354,7 +367,7 @@ extension EnumMetadata {
     // isCanonicalStaticallySpecializedGenericMetadata
     var isCanonicalStaticallySpecializedGenericMetadata: Bool { mutating get { return Self.getIsCanonicalStaticallySpecializedGenericMetadata(&self); } }
     static func getIsCanonicalStaticallySpecializedGenericMetadata(_ data: UnsafePointer<EnumMetadata>) -> Bool {
-        if (false == data.pointee.description.pointee.flags.isGeneric) {
+        if (false == data.pointee.description.pointee.isGeneric) {
             return false;
         }
         if let trailingFlags = Self.getTrailingFlags(data) {
@@ -383,6 +396,17 @@ extension EnumMetadata {
     }
     static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
         return (data.pointee.kind == .Enum || data.pointee.kind == .Optional);
+    }
+    // genericArgs
+    var genericArgs: UnsafeBufferPointer<UnsafePointer<Metadata>>? { mutating get { return Self.getGenericArgs(&self); } }
+    static func getGenericArgs(_ data: UnsafePointer<EnumMetadata>) -> UnsafeBufferPointer<UnsafePointer<Metadata>>? {
+        if (data.pointee.description.pointee.isGeneric) {
+            let offset = Int(UnsafeMutablePointer<EnumDescriptor>(mutating:data.pointee.description).pointee.genericArgumentOffset) * MemoryLayout<OpaquePointer>.size;
+            let num = Int(EnumDescriptor.getTypeGenericContextDescriptorHeader(data.pointee.description)!.pointee.base.numArguments);
+            return Optional(UnsafeBufferPointer<UnsafePointer<Metadata>>(start:UnsafeRawPointer(data).advanced(by:offset).assumingMemoryBound(to:UnsafePointer<Metadata>.self), count:num));
+        } else {
+            return nil;
+        }
     }
 }
 
@@ -479,31 +503,31 @@ extension ClassMetadata {
             return list;
         }
     }
-    // genericParams
-    var genericParams: UnsafeBufferPointer<UnsafePointer<Metadata>>? { mutating get { return Self.getGenericParams(&self); } }
-    static func getGenericParams(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<UnsafePointer<Metadata>>? {
-        let numParams = Int(ClassDescriptor.getNumParams(cls.pointee.description));
-        if (numParams > 0) {
-            let offset = Int(UnsafeMutablePointer<ClassDescriptor>(mutating:cls.pointee.description).pointee.genericArgumentOffset) * MemoryLayout<OpaquePointer>.size;
-            return Optional(UnsafeBufferPointer<UnsafePointer<Metadata>>(start:UnsafeRawPointer(cls).advanced(by:offset).assumingMemoryBound(to:UnsafePointer<Metadata>.self), count:numParams));
+    // genericArgs
+    var genericArgs: UnsafeBufferPointer<UnsafePointer<Metadata>>? { mutating get { return Self.getGenericArgs(&self); } }
+    static func getGenericArgs(_ data: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<UnsafePointer<Metadata>>? {
+        if (data.pointee.description.pointee.isGeneric) {
+            let offset = Int(UnsafeMutablePointer<ClassDescriptor>(mutating:data.pointee.description).pointee.genericArgumentOffset) * MemoryLayout<OpaquePointer>.size;
+            let num = Int(ClassDescriptor.getTypeGenericContextDescriptorHeader(data.pointee.description)!.pointee.base.numArguments);
+            return Optional(UnsafeBufferPointer<UnsafePointer<Metadata>>(start:UnsafeRawPointer(data).advanced(by:offset).assumingMemoryBound(to:UnsafePointer<Metadata>.self), count:num));
         } else {
             return nil;
         }
     }
     // virtual methods
     var virtualMethods: UnsafeBufferPointer<FunctionPointer> { mutating get { return Self.getVirtualMethods(&self); } }
-    static func getVirtualMethods(_ cls: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<FunctionPointer> {
-        let numParams = Int(ClassDescriptor.getNumParams(cls.pointee.description));
+    static func getVirtualMethods(_ data: UnsafePointer<ClassMetadata>) -> UnsafeBufferPointer<FunctionPointer> {
+        let numParams = Int(ClassDescriptor.getNumParams(data.pointee.description));
         var offset = 0;
         var size = 0;
         if (numParams > 1) {
             offset = MemoryLayout<ClassMetadata>.size;
-            size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset - numParams * MemoryLayout<OpaquePointer>.size) / MemoryLayout<uintptr_t>.size - 1/*init function*/;
+            size = (Int(data.pointee.classSize) - Int(data.pointee.classAddressPoint) - offset - numParams * MemoryLayout<OpaquePointer>.size) / MemoryLayout<uintptr_t>.size - 1/*init function*/;
         } else {
             offset = MemoryLayout<ClassMetadata>.size + MemoryLayout<OpaquePointer>.size;
-            size = (Int(cls.pointee.classSize) - Int(cls.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
+            size = (Int(data.pointee.classSize) - Int(data.pointee.classAddressPoint) - offset) / MemoryLayout<uintptr_t>.size;
         }
-        let bastPtr = UnsafeRawPointer(OpaquePointer(cls)).advanced(by:offset);
+        let bastPtr = UnsafeRawPointer(OpaquePointer(data)).advanced(by:offset);
         return UnsafeBufferPointer(start:UnsafePointer<FunctionPointer>(OpaquePointer(bastPtr)), count:size);
     }
     static func classof(_ data: UnsafePointer<Metadata>) -> Bool {

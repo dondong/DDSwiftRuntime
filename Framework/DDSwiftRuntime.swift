@@ -60,22 +60,17 @@ class DDSwiftRuntime {
         return list;
     }
     
-    static func getObjcClass(_ cls: AnyClass) -> UnsafePointer<AnyClassMetadata> {
-        let ptr = Unmanaged.passUnretained(cls as AnyObject).toOpaque();
-        return UnsafePointer<AnyClassMetadata>.init(OpaquePointer(ptr));
+    static func getObjcClassMetadata(_ meta: AnyClass) -> UnsafePointer<AnyClassMetadata>? { return getMetadata(meta); }
+    static func getSwiftClassMetadata(_ meta: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(meta); }
+    static func getStructMetadata(_ meta: Any) -> UnsafePointer<StructMetadata>? { return getMetadata(meta); }
+    static func getEnumMetadata(_ meta: Any) -> UnsafePointer<EnumMetadata>? { return getMetadata(meta); }
+    
+    static func getMetadata<T : MetadataInterface>(_ meta: Any) -> UnsafePointer<T>? {
+        let ptr : OpaquePointer = Self._covert(meta);
+        return Metadata.getFullMetadata(UnsafePointer<Metadata>(ptr));
     }
     
-    static func getSwiftClass(_ cls: AnyClass) -> UnsafePointer<ClassMetadata>? {
-        let opaquePtr = Unmanaged.passUnretained(cls as AnyObject).toOpaque();
-        let ptr = UnsafePointer<AnyClassMetadata>(OpaquePointer(opaquePtr));
-        if (ptr.pointee.isTypeMetadata) {
-            return Optional(UnsafePointer<ClassMetadata>.init(OpaquePointer(opaquePtr)));
-        } else {
-            return nil;
-        }
-    }
-    
-    static func covert<T>(_ val: Any) -> T {
+    static func _covert<T>(_ val: Any) -> T {
         var tmpVal = val;
         let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
         return UnsafeRawPointer.init(tmpValPtr).load(as:T.self);

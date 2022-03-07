@@ -5,10 +5,10 @@ class Test<T> {
   var val: T?;
 }
 
-if let metadata = DDSwiftRuntime.getSwiftClass(Test<Int>.self) {
-  if let params = metadata.pointee.genericParams {
-    for i in 0..<params.count {
-      print(params[i].pointee.kind);
+if let metadata = DDSwiftRuntime.getSwiftClassMetadata(Test<Int>.self) {
+  if let args = metadata.pointee.genericArgs {
+    for i in 0..<args.count {
+      print(args[i].pointee.kind);
     }
   }
   let virtualMethods = metadata.pointee.virtualMethods;

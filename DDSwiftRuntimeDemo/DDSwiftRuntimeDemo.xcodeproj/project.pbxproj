@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A32CA85D27CE247B009B9F34 /* SwiftGenericClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32CA85C27CE247B009B9F34 /* SwiftGenericClass.swift */; };
+		A32CA85D27CE247B009B9F34 /* SwiftGeneric.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32CA85C27CE247B009B9F34 /* SwiftGeneric.swift */; };
 		A3BBD9D027CB7B1B00BACFED /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9CF27CB7B1B00BACFED /* AppDelegate.swift */; };
 		A3BBD9D227CB7B1B00BACFED /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9D127CB7B1B00BACFED /* SceneDelegate.swift */; };
 		A3BBD9D427CB7B1B00BACFED /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9D327CB7B1B00BACFED /* ViewController.swift */; };
@@ -18,14 +18,14 @@
 		A3BBD9E827CB7B2B00BACFED /* Descriptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9E527CB7B2B00BACFED /* Descriptor.swift */; };
 		A3BBD9E927CB7B2B00BACFED /* DDSwiftRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9E627CB7B2B00BACFED /* DDSwiftRuntime.swift */; };
 		A3BBD9F127CB9CC000BACFED /* SwiftClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */; };
-		A3BBD9F327CB9CD100BACFED /* ObjcClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */; };
 		A3BBD9F527CB9E9B00BACFED /* RuntimeDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BBD9F427CB9E9B00BACFED /* RuntimeDemo.swift */; };
 		A3BF5D7D27CF7CFA00AFF2CD /* Value.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BF5D7C27CF7CFA00AFF2CD /* Value.swift */; };
+		A3C9082227D5E135005C6859 /* ObjClass.m in Sources */ = {isa = PBXBuildFile; fileRef = A3C9082127D5E135005C6859 /* ObjClass.m */; };
 		A3CE1AFC27D1DD0400B96D74 /* MetadataExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE1AFB27D1DD0400B96D74 /* MetadataExtension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A32CA85C27CE247B009B9F34 /* SwiftGenericClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftGenericClass.swift; sourceTree = "<group>"; };
+		A32CA85C27CE247B009B9F34 /* SwiftGeneric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftGeneric.swift; sourceTree = "<group>"; };
 		A3BBD9CC27CB7B1B00BACFED /* DDSwiftRuntimeDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DDSwiftRuntimeDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3BBD9CF27CB7B1B00BACFED /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A3BBD9D127CB7B1B00BACFED /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -38,9 +38,11 @@
 		A3BBD9E527CB7B2B00BACFED /* Descriptor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Descriptor.swift; sourceTree = "<group>"; };
 		A3BBD9E627CB7B2B00BACFED /* DDSwiftRuntime.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DDSwiftRuntime.swift; sourceTree = "<group>"; };
 		A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftClass.swift; sourceTree = "<group>"; };
-		A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjcClass.swift; sourceTree = "<group>"; };
 		A3BBD9F427CB9E9B00BACFED /* RuntimeDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeDemo.swift; sourceTree = "<group>"; };
 		A3BF5D7C27CF7CFA00AFF2CD /* Value.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Value.swift; sourceTree = "<group>"; };
+		A3C9081F27D5E135005C6859 /* DDSwiftRuntimeDemo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "DDSwiftRuntimeDemo-Bridging-Header.h"; sourceTree = "<group>"; };
+		A3C9082027D5E135005C6859 /* ObjClass.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjClass.h; sourceTree = "<group>"; };
+		A3C9082127D5E135005C6859 /* ObjClass.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ObjClass.m; sourceTree = "<group>"; };
 		A3CE1AFB27D1DD0400B96D74 /* MetadataExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataExtension.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -104,35 +106,13 @@
 		A3BBD9EA27CB9ACC00BACFED /* Type */ = {
 			isa = PBXGroup;
 			children = (
-				A3BBD9ED27CB9AED00BACFED /* Enum */,
-				A3BBD9EC27CB9AE600BACFED /* Struct */,
-				A3BBD9EB27CB9AE000BACFED /* Class */,
+				A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */,
+				A32CA85C27CE247B009B9F34 /* SwiftGeneric.swift */,
+				A3C9082027D5E135005C6859 /* ObjClass.h */,
+				A3C9082127D5E135005C6859 /* ObjClass.m */,
+				A3C9081F27D5E135005C6859 /* DDSwiftRuntimeDemo-Bridging-Header.h */,
 			);
 			path = Type;
-			sourceTree = "<group>";
-		};
-		A3BBD9EB27CB9AE000BACFED /* Class */ = {
-			isa = PBXGroup;
-			children = (
-				A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */,
-				A32CA85C27CE247B009B9F34 /* SwiftGenericClass.swift */,
-				A3BBD9F227CB9CD100BACFED /* ObjcClass.swift */,
-			);
-			path = Class;
-			sourceTree = "<group>";
-		};
-		A3BBD9EC27CB9AE600BACFED /* Struct */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Struct;
-			sourceTree = "<group>";
-		};
-		A3BBD9ED27CB9AED00BACFED /* Enum */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Enum;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -167,6 +147,7 @@
 				TargetAttributes = {
 					A3BBD9CB27CB7B1B00BACFED = {
 						CreatedOnToolsVersion = 13.2.1;
+						LastSwiftMigration = 1320;
 					};
 				};
 			};
@@ -208,15 +189,15 @@
 			files = (
 				A3BBD9F527CB9E9B00BACFED /* RuntimeDemo.swift in Sources */,
 				A3BBD9F127CB9CC000BACFED /* SwiftClass.swift in Sources */,
+				A3C9082227D5E135005C6859 /* ObjClass.m in Sources */,
 				A3BF5D7D27CF7CFA00AFF2CD /* Value.swift in Sources */,
 				A3BBD9D427CB7B1B00BACFED /* ViewController.swift in Sources */,
 				A3BBD9D027CB7B1B00BACFED /* AppDelegate.swift in Sources */,
-				A32CA85D27CE247B009B9F34 /* SwiftGenericClass.swift in Sources */,
+				A32CA85D27CE247B009B9F34 /* SwiftGeneric.swift in Sources */,
 				A3BBD9E827CB7B2B00BACFED /* Descriptor.swift in Sources */,
 				A3BBD9E727CB7B2B00BACFED /* Metadata.swift in Sources */,
 				A3CE1AFC27D1DD0400B96D74 /* MetadataExtension.swift in Sources */,
 				A3BBD9E927CB7B2B00BACFED /* DDSwiftRuntime.swift in Sources */,
-				A3BBD9F327CB9CD100BACFED /* ObjcClass.swift in Sources */,
 				A3BBD9D227CB7B1B00BACFED /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -364,6 +345,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4NJG5HB4C2;
@@ -382,6 +364,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.dd.kit.DDSwiftRuntimeDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "DDSwiftRuntimeDemo/Type/DDSwiftRuntimeDemo-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -392,6 +376,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4NJG5HB4C2;
@@ -410,6 +395,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.dd.kit.DDSwiftRuntimeDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "DDSwiftRuntimeDemo/Type/DDSwiftRuntimeDemo-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

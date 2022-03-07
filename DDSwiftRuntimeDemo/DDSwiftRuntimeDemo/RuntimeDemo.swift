@@ -19,36 +19,66 @@ func printAllType() {
 }
 
 func printClass() {
-//    if let metadata = DDSwiftRuntime.getSwiftClass(Test2.self) {
-//        printClassMetadata(metadata, "Test2");
-//    }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftBaseClass.self) {
-        printClassMetadata(metadata, "SwiftBaseClass");
+    if let metadata = DDSwiftRuntime.getSwiftClassMetadata(SwiftBaseClass.self) {
+        printClassMetadata(metadata);
     }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftClass.self) {
-        printClassMetadata(metadata, "SwiftClass");
+    if let metadata = DDSwiftRuntime.getSwiftClassMetadata(SwiftClass.self) {
+        printClassMetadata(metadata);
     }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftChildClass.self) {
-        printClassMetadata(metadata, "SwiftChildClass");
+    if let metadata = DDSwiftRuntime.getSwiftClassMetadata(SwiftChildClass.self) {
+        printClassMetadata(metadata);
     }
-}
-
-func printGenericClass() {
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericBaseClass<String>.self) {
-        printClassMetadata(metadata, "SwiftGenericBaseClass");
-    }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericClass<String, NSString>.self) {
-        printClassMetadata(metadata, "SwiftGenericClass");
-    }
-    if let metadata = DDSwiftRuntime.getSwiftClass(SwiftGenericChildClass.self) {
-        printClassMetadata(metadata, "SwiftGenericChildClass");
+    if let metadata = DDSwiftRuntime.getObjcClassMetadata(ObjClass.self) {
+        printAnyClassMetadata(metadata);
     }
 }
 
-fileprivate func printClassMetadata(_ ptr: UnsafePointer<ClassMetadata>, _ clsName: String) {
-    let metadata = UnsafeMutablePointer<ClassMetadata>(OpaquePointer(ptr));
+func printGeneric() {
+    if let metadata = DDSwiftRuntime.getSwiftClassMetadata(SwiftGenericBaseClass<String>.self) {
+        printClassMetadata(metadata);
+    }
+    if let metadata = DDSwiftRuntime.getSwiftClassMetadata(SwiftGenericClass<Int, NSString>.self) {
+        printClassMetadata(metadata);
+    }
+    if let metadata = DDSwiftRuntime.getSwiftClassMetadata(SwiftGenericChildClass.self) {
+        printClassMetadata(metadata);
+    }
+    if let metadata = DDSwiftRuntime.getStructMetadata(SwiftGenericStruct<Int>.self) {
+        printStructMetadata(metadata)
+    }
+    if let metadata = DDSwiftRuntime.getEnumMetadata(SwiftGenericEnum<String, NSString>.self) {
+        printEnumMetadata(metadata);
+    }
+}
+
+fileprivate func printMetadata(_ data: UnsafePointer<Metadata>) {
+    switch(data.pointee.kind) {
+    case .Class:
+        printClassMetadata(UnsafePointer<ClassMetadata>(OpaquePointer(data)));
+    case .Enum, .Optional:
+        printEnumMetadata(UnsafePointer<EnumMetadata>(OpaquePointer(data)));
+    case .Struct:
+        printStructMetadata(UnsafePointer<StructMetadata>(OpaquePointer(data)));
+    default:
+        break;
+    }
+}
+
+fileprivate func printAnyClassMetadata(_ data: UnsafePointer<AnyClassMetadata>) {
+    let metadata = UnsafeMutablePointer<AnyClassMetadata>(mutating:data);
     print("***********************************************");
-    print("class name: ", clsName);
+    print("***** AnyClassMetadata *****");
+    print("address:", metadata);
+    print("objc name:", metadata.pointee.name);
+    print("objc kind:", metadata.pointee.kind);
+    print("objc supper:", metadata.pointee.superclass);
+    print("***********************************************");
+    print("");
+}
+
+fileprivate func printClassMetadata(_ data: UnsafePointer<ClassMetadata>) {
+    let metadata = UnsafeMutablePointer<ClassMetadata>(mutating:data);
+    print("***********************************************");
     print("***** ClassMetadata *****");
     print("address:", metadata);
     print("objc name:", metadata.pointee.name);
@@ -63,8 +93,8 @@ fileprivate func printClassMetadata(_ ptr: UnsafePointer<ClassMetadata>, _ clsNa
     print("classAddressPoint:", metadata.pointee.classAddressPoint);
     print("description:", metadata.pointee.description);
     print("ivarDestroyer:", metadata.pointee.ivarDestroyer);
-    if let gens = metadata.pointee.genericParams {
-        print("genericParams:")
+    if let gens = metadata.pointee.genericArgs {
+        print("genericArgs:")
         for i in 0..<gens.count {
             print("\(i).  kind:", gens[i].pointee.kind, gens[i]);
             if let enumGen: UnsafePointer<EnumMetadata> = Metadata.getFullMetadata(gens[i]) {
@@ -89,6 +119,58 @@ fileprivate func printClassMetadata(_ ptr: UnsafePointer<ClassMetadata>, _ clsNa
     printClassDescriptor(metadata.pointee.description);
     print("***********************************************");
     print("");
+}
+
+fileprivate func printStructMetadata(_ data: UnsafePointer<StructMetadata>) {
+    let metadata = UnsafeMutablePointer<StructMetadata>(mutating:data);
+    print("***********************************************");
+    print("***** StructMetadata *****");
+    print("address:", metadata);
+    if let gens = metadata.pointee.genericArgs {
+        print("genericArgs:")
+        for i in 0..<gens.count {
+            print("\(i).  kind:", gens[i].pointee.kind, gens[i]);
+            if let enumGen: UnsafePointer<EnumMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", EnumDescriptor.getName(enumGen.pointee.description));
+            } else if let strGen: UnsafePointer<StructMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", StructDescriptor.getName(strGen.pointee.description));
+            } else if let clsGen: UnsafePointer<ClassMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", ClassMetadata.getName(clsGen));
+            } else if let clsGen: UnsafePointer<AnyClassMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", AnyClassMetadata.getName(clsGen));
+            }
+        }
+    }
+    
+    print("***** StructDescriptor *****");
+    printStructDescriptor(metadata.pointee.description);
+    print("***********************************************");
+}
+
+fileprivate func printEnumMetadata(_ data: UnsafePointer<EnumMetadata>) {
+    let metadata = UnsafeMutablePointer<EnumMetadata>(mutating:data);
+    print("***********************************************");
+    print("***** EnumMetadata *****");
+    print("address:", metadata);
+    if let gens = metadata.pointee.genericArgs {
+        print("genericArgs:")
+        for i in 0..<gens.count {
+            print("\(i).  kind:", gens[i].pointee.kind, gens[i]);
+            if let enumGen: UnsafePointer<EnumMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", EnumDescriptor.getName(enumGen.pointee.description));
+            } else if let strGen: UnsafePointer<StructMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", StructDescriptor.getName(strGen.pointee.description));
+            } else if let clsGen: UnsafePointer<ClassMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", ClassMetadata.getName(clsGen));
+            } else if let clsGen: UnsafePointer<AnyClassMetadata> = Metadata.getFullMetadata(gens[i]) {
+                print("    name:", AnyClassMetadata.getName(clsGen));
+            }
+        }
+    }
+    
+    print("***** EnumDescriptor *****");
+    printEnumDescriptor(metadata.pointee.description);
+    print("***********************************************");
 }
 
 fileprivate func printDescriptor(_ des: UnsafePointer<ContextDescriptor>) {
@@ -129,7 +211,7 @@ fileprivate func printProtocolConformanceDescriptor(_ d: UnsafePointer<ProtocolC
     }
     if let metadata = des.pointee.indirectObjCClass {
         print("indirectObjCClass");
-        printClassMetadata(metadata, "ProtocolConformanceDescriptor");
+        printClassMetadata(metadata);
     }
     if let type = des.pointee.typeDescriptor {
         print("typeDescriptor");
@@ -169,12 +251,12 @@ fileprivate func printContextDescriptor(_ d: UnsafePointer<ContextDescriptor>) {
     print("kind:", des.pointee.flags.kind);
     print("address:", des);
     print("parent:", String(describing:des.pointee.parent));
-    print("version:", des.pointee.flags.version);
-    print("isGeneric:", des.pointee.flags.isGeneric);
-    print("isUnique:", des.pointee.flags.isUnique);
-    print("metadataInitialization:", des.pointee.flags.metadataInitialization);
-    print("hasResilientSuperclass:", des.pointee.flags.hasResilientSuperclass);
-    print("hasVTable:", des.pointee.flags.hasVTable);
+    print("version:", des.pointee.version);
+    print("isGeneric:", des.pointee.isGeneric);
+    print("isUnique:", des.pointee.isUnique);
+    print("metadataInitialization:", des.pointee.metadataInitialization);
+    print("hasResilientSuperclass:", des.pointee.hasResilientSuperclass);
+    print("hasVTable:", des.pointee.hasVTable);
 }
 
 fileprivate func printTypeContextDescriptor(_ d: UnsafePointer<TypeContextDescriptor>) {

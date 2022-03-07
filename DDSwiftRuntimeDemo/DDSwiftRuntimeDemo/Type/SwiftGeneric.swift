@@ -58,3 +58,16 @@ class SwiftGenericChildClass : SwiftGenericClass<Int, String> {
         print("SwiftGenericClass testD", v);
     }
 }
+
+
+struct SwiftGenericStruct<T> {
+    var value: T;
+    init(_ val: T) {
+        self.value = val;
+    }
+}
+
+enum SwiftGenericEnum<T, T2> {
+    case val(v: T);
+    case test(v: T2);
+}

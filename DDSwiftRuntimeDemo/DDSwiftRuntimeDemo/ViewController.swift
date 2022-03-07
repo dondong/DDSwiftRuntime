@@ -28,8 +28,8 @@ class ViewController: UIViewController {
         // generic class
         let genericClassButton = UIButton(frame:CGRect(x:(self.view.frame.width - 150) * 0.5, y:300, width:150, height:44));
         genericClassButton.backgroundColor = .darkGray;
-        genericClassButton.setTitle("test generic class", for:.normal);
-        genericClassButton.addTarget(self, action:#selector(testGenericClass), for:.touchUpInside);
+        genericClassButton.setTitle("test generic", for:.normal);
+        genericClassButton.addTarget(self, action:#selector(testGeneric), for:.touchUpInside);
         self.view.addSubview(genericClassButton);
     }
     
@@ -41,8 +41,8 @@ class ViewController: UIViewController {
         printClass();
     }
     
-    @objc func testGenericClass() {
-        printGenericClass();
+    @objc func testGeneric() {
+        printGeneric();
     }
 }
 
