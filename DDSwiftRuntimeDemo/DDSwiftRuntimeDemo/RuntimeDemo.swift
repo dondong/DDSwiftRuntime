@@ -8,7 +8,7 @@
 import Foundation
 import Darwin
 
-func printAllType() {
+func printMainTypes() {
     let list = DDSwiftRuntime.getMainSwiftTypeList();
     for i in 0..<list.count {
         print("***********************************************");
@@ -18,13 +18,42 @@ func printAllType() {
     }
 }
 
-func printAllProtocolConformance() {
+func printMainProtocolConformances() {
     let list = DDSwiftRuntime.getMainSwiftProtocolConformanceList();
     for i in 0..<list.count {
         print("***********************************************");
         print("protocol conformance index:", i);
         printProtocolConformanceDescriptor(list[i]);
         print("");
+    }
+}
+
+func printProtocolConformances() {
+    print("***********************************************");
+    print("SwiftProtocolClass")
+    _printProtocolConformance(SwiftProtocolClass.self);
+    print("");
+    print("***********************************************");
+    print("SwiftGenericStruct")
+    _printProtocolConformance(SwiftProtocolStruct.self);
+    print("");
+    print("***********************************************");
+    print("SwiftProtocolEnum")
+    _printProtocolConformance(SwiftProtocolEnum.self);
+    print("");
+}
+
+fileprivate func _printProtocolConformance(_ pro: Any) {
+    let protocols = DDSwiftRuntime.getSwiftProtocolConformances(pro);
+    for i in 0..<protocols.count {
+        let p = ProtocolConformanceDescriptor.getProtocolDescriptor(protocols[i]);
+        print(i, ProtocolDescriptor.getName(p));
+        if let table = ProtocolConformanceDescriptor.getWitnessTable(protocols[i]) {
+            print("wintess table");
+            for j in 0..<table.count {
+                print(j, "function:", table[j].functionName);
+            }
+        }
     }
 }
 

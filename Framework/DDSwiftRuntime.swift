@@ -8,10 +8,10 @@
 import Foundation
 import MachO
 import Darwin
-import UIKit
-
 
 class DDSwiftRuntime {
+    // MARK: -
+    // MARK: macho list
     // type
     static func getAllSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self._getAllSwiftList("__swift5_types"); }
     static func getMainSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self._getMainSwiftList("__swift5_types"); }
@@ -59,18 +59,47 @@ class DDSwiftRuntime {
         }
         return list;
     }
-    
+    // MARK: -
+    // MARK: Metadata
+    static func getMetadata(classObject: AnyObject) -> UnsafePointer<Metadata> {
+        let heapObject = unsafeBitCast(classObject, to:UnsafePointer<HeapObject>.self);
+        return UnsafePointer<Metadata>(OpaquePointer(heapObject.pointee.metadata));
+    }
     static func getObjcClassMetadata(_ meta: AnyClass) -> UnsafePointer<AnyClassMetadata>? { return getMetadata(meta); }
     static func getSwiftClassMetadata(_ meta: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(meta); }
     static func getStructMetadata(_ meta: Any) -> UnsafePointer<StructMetadata>? { return getMetadata(meta); }
     static func getEnumMetadata(_ meta: Any) -> UnsafePointer<EnumMetadata>? { return getMetadata(meta); }
-    
     static func getMetadata<T : MetadataInterface>(_ meta: Any) -> UnsafePointer<T>? {
         let ptr : OpaquePointer = Self._covert(meta);
         return Metadata.getFullMetadata(UnsafePointer<Metadata>(ptr));
     }
     
-    static func _covert<T>(_ val: Any) -> T {
+    // MARK: -
+    // MARK: protocol
+    static func getSwiftProtocolConformances(_ meta: Any) -> [UnsafePointer<ProtocolConformanceDescriptor>] {
+        let metaPtr : UnsafePointer<Metadata> = Self._covert(meta);
+        var type: UnsafePointer<ContextDescriptor>! = nil;
+        if (metaPtr.pointee.kind == .Class) {
+            type = UnsafePointer<ContextDescriptor>(OpaquePointer(UnsafePointer<ClassMetadata>(OpaquePointer(metaPtr)).pointee.description));
+        } else if (metaPtr.pointee.kind == .Struct) {
+            type = UnsafePointer<ContextDescriptor>(OpaquePointer(UnsafePointer<StructMetadata>(OpaquePointer(metaPtr)).pointee.description));
+        } else if (metaPtr.pointee.kind == .Enum) {
+            type = UnsafePointer<ContextDescriptor>(OpaquePointer(UnsafePointer<EnumMetadata>(OpaquePointer(metaPtr)).pointee.description));
+        } else {
+            return [UnsafePointer<ProtocolConformanceDescriptor>]();
+        }
+        var list = [UnsafePointer<ProtocolConformanceDescriptor>]();
+        let ptr = Self.getAllSwiftProtocolConformanceList();
+        for i in 0..<ptr.count {
+            if (ProtocolConformanceDescriptor.getTypeDescriptor(ptr[i]) == type) {
+                list.append(ptr[i]);
+            }
+        }
+        return list;
+    }
+    // MARK: -
+    // MARK: private
+    fileprivate static func _covert<T>(_ val: Any) -> T {
         var tmpVal = val;
         let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
         return UnsafeRawPointer.init(tmpValPtr).load(as:T.self);

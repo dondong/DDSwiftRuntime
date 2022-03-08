@@ -22,6 +22,7 @@
 		A3BF5D7D27CF7CFA00AFF2CD /* Value.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3BF5D7C27CF7CFA00AFF2CD /* Value.swift */; };
 		A3C9082227D5E135005C6859 /* ObjClass.m in Sources */ = {isa = PBXBuildFile; fileRef = A3C9082127D5E135005C6859 /* ObjClass.m */; };
 		A3CE1AFC27D1DD0400B96D74 /* MetadataExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE1AFB27D1DD0400B96D74 /* MetadataExtension.swift */; };
+		A3DEF03B27D735E300DCD2F3 /* SwiftProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3DEF03A27D735E300DCD2F3 /* SwiftProtocol.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 		A3C9082027D5E135005C6859 /* ObjClass.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjClass.h; sourceTree = "<group>"; };
 		A3C9082127D5E135005C6859 /* ObjClass.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ObjClass.m; sourceTree = "<group>"; };
 		A3CE1AFB27D1DD0400B96D74 /* MetadataExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataExtension.swift; sourceTree = "<group>"; };
+		A3DEF03A27D735E300DCD2F3 /* SwiftProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftProtocol.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +110,7 @@
 			children = (
 				A3BBD9F027CB9CC000BACFED /* SwiftClass.swift */,
 				A32CA85C27CE247B009B9F34 /* SwiftGeneric.swift */,
+				A3DEF03A27D735E300DCD2F3 /* SwiftProtocol.swift */,
 				A3C9082027D5E135005C6859 /* ObjClass.h */,
 				A3C9082127D5E135005C6859 /* ObjClass.m */,
 				A3C9081F27D5E135005C6859 /* DDSwiftRuntimeDemo-Bridging-Header.h */,
@@ -187,6 +190,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A3DEF03B27D735E300DCD2F3 /* SwiftProtocol.swift in Sources */,
 				A3BBD9F527CB9E9B00BACFED /* RuntimeDemo.swift in Sources */,
 				A3BBD9F127CB9CC000BACFED /* SwiftClass.swift in Sources */,
 				A3C9082227D5E135005C6859 /* ObjClass.m in Sources */,
