@@ -1032,27 +1032,47 @@ struct GenericRequirementDescriptor {
     fileprivate let _layout: Int32;
 }
 
-struct RelativeTargetProtocolDescriptorPointer {
-    fileprivate var _pointer : RelativeDirectPointer;
+struct RelativeProtocolDescriptorPointer {
+    fileprivate var _pointer : Int32;
 }
 
-extension RelativeTargetProtocolDescriptorPointer {
-//    fileprivate static func mask() -> Int32 {
-//        return Int32(MemoryLayout<RelativeDirectPointer>.alignment - 1);
-//    }
-//    fileprivate static func pointer(_ ptr: UnsafePointer<RelativeTargetProtocolDescriptorPointer>, _ offset: Int32) -> OpaquePointer? {
-//        return OpaquePointer(bitPattern:Int(bitPattern:ptr) + Int(offset));
-//    }
-//    var pointer: OpaquePointer? {
-//        mutating get {
-//            let offset = (self._pointer & ~RelativeTargetProtocolDescriptorPointer.mask());
-//            if (self._pointer == 0) { return nil; }
-//            return RelativeTargetProtocolDescriptorPointer.pointer(&self, offset);
-//        }
-//    }
-//    var isObjC: Bool {
-//        return (self._pointer & RelativeTargetProtocolDescriptorPointer.mask()) != 0;
-//    }
+extension RelativeProtocolDescriptorPointer {
+    fileprivate static func getMask() -> Int32 {
+        return Int32(MemoryLayout<Int32>.alignment - 1) & ~Int32(0x01);
+    }
+    fileprivate static func _getPointer(_ data: UnsafePointer<RelativeProtocolDescriptorPointer>) -> OpaquePointer {
+        let offset = (data.pointee._pointer & ~Self.getMask());
+        let address = Int(bitPattern:data) + Int(offset & ~1);
+        if ((offset & 1) != 0) {
+            return UnsafePointer<OpaquePointer>(OpaquePointer(bitPattern:address))!.pointee;
+        } else {
+            return OpaquePointer(bitPattern:address)!;
+        }
+    }
+    // isObjC
+    var isObjC: Bool { get { return ((self._pointer & Self.getMask()) >> 1) != 0; } }
+    // swiftPointer
+    var swiftPointer: UnsafePointer<ProtocolDescriptor>? { mutating get { return Self.getSwiftPointer(&self); } }
+    static func getSwiftPointer(_ data: UnsafePointer<RelativeProtocolDescriptorPointer>) ->UnsafePointer<ProtocolDescriptor>? {
+        if (!data.pointee.isObjC) {
+            return Optional(UnsafePointer<ProtocolDescriptor>(Self._getPointer(data)));
+        } else {
+            return nil;
+        }
+    }
+    // objcPointer
+    var objcPointer: UnsafePointer<ObjcProtocol>? { mutating get { return Self.getObjcPointer(&self); } }
+    static func getObjcPointer(_ data: UnsafePointer<RelativeProtocolDescriptorPointer>) ->UnsafePointer<ObjcProtocol>? {
+        if (data.pointee.isObjC) {
+            return Optional(UnsafePointer<ObjcProtocol>(Self._getPointer(data)));
+        } else {
+            return nil;
+        }
+    }
+}
+
+struct ObjcProtocol {
+    let isa: UnsafePointer<AnyClassMetadata>;
 }
 
 typealias GenericRequirementLayoutKind = Int32;
@@ -1065,15 +1085,14 @@ extension GenericRequirementDescriptor {
         return String(cString:UnsafePointer<CChar>(ptr));
     }
     // protocol
-//    var protocolDescriptor: UnsafePointer<ProtocolDescriptor>? { mutating get { return Self.getProtocolDescriptor(&self); } }
-//    static func getProtocolDescriptor(_ data: UnsafePointer<GenericRequirementDescriptor>) -> UnsafePointer<ProtocolDescriptor>? {
-//        if (data.pointee.kind == .ProtocolDescriptor) {
-//            let ptr = DDSwiftRuntime.getPointerFromRelativeDirectPointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2))!;
-//            return Optional(UnsafePointer<ProtocolDescriptor>(ptr));
-//        } else {
-//            return nil;
-//        }
-//    }
+    var protocolDescriptor: UnsafePointer<RelativeProtocolDescriptorPointer>? { mutating get { return Self.getProtocolDescriptor(&self); } }
+    static func getProtocolDescriptor(_ data: UnsafePointer<GenericRequirementDescriptor>) -> UnsafePointer<RelativeProtocolDescriptorPointer>? {
+        if (data.pointee.kind == .Protocol) {
+            return Optional(UnsafePointer<RelativeProtocolDescriptorPointer>(OpaquePointer(UnsafePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2))));
+        } else {
+            return nil;
+        }
+    }
     // mangledTypeName
     var mangledTypeName: String? { mutating get { return Self.getMangledTypeName(&self); } }
     static func getMangledTypeName(_ data: UnsafePointer<GenericRequirementDescriptor>) -> String? {
