@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.summary  = 'A description of DDSwiftRuntime.'
   s.homepage = 'https://github.com/dondong/DDSwiftRuntime'
   s.authors  = { 'dondong' => 'the-last-choice@qq.com' }
-  s.source   = { :git => 'https://github.com/dondong/DDSwiftRuntime.git' }
+  s.source   = { :git => 'https://github.com/dondong/DDSwiftRuntime.git', :tag => s.version  }
   s.module_name   = 'DDSwiftRuntime'
   s.swift_version = '5.5'
   
