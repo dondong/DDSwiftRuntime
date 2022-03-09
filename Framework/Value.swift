@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct RelativeContextPointer {
+public struct RelativeContextPointer {
     fileprivate let _value: Int32;
     var rawvalue: Int32 { get { return self._value; } }
     var pointer: OpaquePointer? { mutating get { return Self.getPointer(&self); } }
@@ -24,7 +24,7 @@ struct RelativeContextPointer {
     }
 }
 
-struct RelativeDirectPointer {
+public struct RelativeDirectPointer {
     fileprivate let _value: Int32;
     var rawvalue: Int32 { get { return self._value; } }
     var pointer: OpaquePointer? { mutating get { return Self.getPointer(&self); } }
@@ -36,7 +36,7 @@ struct RelativeDirectPointer {
         }
     }
 }
-struct FunctionPointer {
+public struct FunctionPointer {
     fileprivate let _value: OpaquePointer;
     init(_ val: OpaquePointer) {
         self._value = val;

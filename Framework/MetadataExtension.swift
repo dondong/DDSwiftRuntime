@@ -8,7 +8,7 @@
 import Foundation
 
 extension Metadata {
-    static func getFullMetadata<T : MetadataInterface>(_ data: UnsafePointer<Metadata>) -> UnsafePointer<T>? {
+    public static func getFullMetadata<T : MetadataInterface>(_ data: UnsafePointer<Metadata>) -> UnsafePointer<T>? {
         if (T.classof(data)) {
             return UnsafePointer<T>(OpaquePointer(data));
         } else {
