@@ -142,39 +142,6 @@ extension ValueWitnessTable {
 }
 
 /***
- * ExistentialTypeMetadata
- ***/
-struct ExistentialTypeFlags {
-    fileprivate let _value: UInt32;
-}
-
-extension ExistentialTypeFlags {
-    fileprivate static let numWitnessTablesMask: UInt32 = 0x00FFFFFF;
-    fileprivate static let classConstraintMask: UInt32 = 0x80000000;
-    fileprivate static let hasSuperclassMask: UInt32 = 0x40000000;
-    fileprivate static let specialProtocolMask: UInt32 = 0x3F000000;
-    fileprivate static let specialProtocolShift: UInt32 = 24;
-    var numWitnessTables: UInt32 { get { return self._value & Self.numWitnessTablesMask; } }
-    var classConstraint: ProtocolClassConstraint { get { return ProtocolClassConstraint(rawValue:(self._value & Self.classConstraintMask) != 0 ? 1 : 0) ?? .Any; } }
-    var hasSuperclassConstraint: Bool { get { return (self._value & Self.hasSuperclassMask) != 0; } }
-    var specialProtocol: SpecialProtocol { get { return SpecialProtocol(rawValue:UInt8((self._value & Self.specialProtocolMask) >> Self.specialProtocolShift)) ?? .Error; } }
-}
-
-struct ExistentialTypeMetadata : MetadataInterface {
-    let kindRawValue: UInt;
-    let flags: ExistentialTypeFlags;
-    let numProtocols: UInt32;
-    // ConstTargetMetadataPointer
-    // ProtocolDescriptorRef
-}
-
-extension ExistentialTypeMetadata {
-    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
-        return data.pointee.kind == .Existential;
-    }
-}
-
-/***
  * HeapMetadata
  ***/
 struct HeapMetadata : HeapMetadataInterface {
@@ -612,5 +579,177 @@ extension ClassMetadataBounds {
         return ClassMetadataBounds(totoalSize - addressPoint,
                                    UInt32(addressPoint / MemoryLayout<OpaquePointer>.size),
                                    UInt32((totoalSize - addressPoint) / MemoryLayout<OpaquePointer>.size));
+    }
+}
+
+/***
+ * FunctionTypeMetadata
+ ***/
+enum FunctionMetadataConvention: UInt8 {
+    case Swift = 0;
+    case Block = 1;
+    case Thin = 2;
+    case CFunctionPointer = 3;
+}
+
+struct FunctionTypeFlags {
+    fileprivate let _value: UInt;
+}
+
+extension FunctionTypeFlags {
+    fileprivate static let NumParametersMask: UInt = 0x0000FFFF;
+    fileprivate static let ConventionMask: UInt = 0x00FF0000;
+    fileprivate static let ConventionShift: UInt = 16;
+    fileprivate static let ThrowsMask: UInt = 0x01000000;
+    fileprivate static let ParamFlagsMask: UInt = 0x02000000;
+    fileprivate static let EscapingMask: UInt = 0x04000000;
+    fileprivate static let DifferentiableMask: UInt = 0x08000000;
+    fileprivate static let GlobalActorMask: UInt = 0x10000000;
+    fileprivate static let AsyncMask: UInt = 0x20000000;
+    fileprivate static let SendableMask: UInt = 0x40000000;
+    var numParameters: UInt { get { return self._value & Self.NumParametersMask; } }
+    var convention: FunctionMetadataConvention { get { return FunctionMetadataConvention(rawValue:UInt8((self._value & Self.ConventionMask) >> Self.ConventionShift)) ?? .Swift; } }
+    var isAsync: Bool { get { return (self._value & Self.AsyncMask) != 0; } }
+    var isThrowing: Bool { get { return (self._value & Self.ThrowsMask) != 0; } }
+    var isEscaping: Bool { get { return (self._value & Self.EscapingMask) != 0; } }
+    var isSendable: Bool { get { return (self._value & Self.SendableMask) != 0; } }
+    var hasParameterFlags: Bool { get { return (self._value & Self.ParamFlagsMask) != 0; } }
+    var isDifferentiable: Bool { get { return (self._value & Self.DifferentiableMask) != 0; } }
+    var hasGlobalActor: Bool { get { return (self._value & Self.GlobalActorMask) != 0; } }
+}
+
+enum ValueOwnership : UInt8 {
+    case Default = 0;
+    case InOut = 1;
+    case Shared = 2;
+    case Owned = 3;
+//    case Last_Kind = Owned;
+};
+
+struct ParameterTypeFlags {
+    fileprivate let _value: UInt32;
+}
+
+extension ParameterTypeFlags {
+    fileprivate static let ValueOwnershipMask: UInt32 = 0x7F;
+    fileprivate static let VariadicMask: UInt32 = 0x80;
+    fileprivate static let AutoClosureMask: UInt32 = 0x100;
+    fileprivate static let NoDerivativeMask: UInt32 = 0x200;
+    fileprivate static let IsolatedMask: UInt32 = 0x400;
+    var isNone: Bool { get { return self._value == 0; } }
+    var isVariadic: Bool { get { return (self._value & Self.VariadicMask) != 0; } }
+    var isAutoClosure: Bool { get { return (self._value & Self.AutoClosureMask) != 0; } }
+    var isNoDerivative: Bool { get { return (self._value & Self.NoDerivativeMask) != 0; } }
+    var isIsolated: Bool { get { return (self._value & Self.IsolatedMask) != 0; } }
+    var valueOwnership: ValueOwnership { get { return ValueOwnership(rawValue:UInt8(self._value & Self.ValueOwnershipMask)) ?? .Default; } }
+}
+
+struct FunctionTypeMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let flags: FunctionTypeFlags;
+    let resultType: UnsafePointer<Metadata>;
+}
+
+extension FunctionTypeMetadata {
+    var numParameters: UInt { get { return self.flags.numParameters; } }
+    var convention: FunctionMetadataConvention { get { return self.flags.convention; } }
+    var isAsync: Bool { get { return self.flags.isAsync; } }
+    var isThrowing: Bool { get { return self.flags.isThrowing; } }
+    var isSendable: Bool { get { return self.flags.isSendable; } }
+    var isDifferentiable: Bool { get { return self.flags.isDifferentiable; } }
+    var hasParameterFlags: Bool { get { return self.flags.hasParameterFlags; } }
+    var isEscaping: Bool { get { return self.flags.isEscaping; } }
+    var hasGlobalActor: Bool { get { return self.flags.hasGlobalActor; } }
+    // parameters
+    var parameters: UnsafeBufferPointer<UnsafePointer<Metadata>> { mutating get { return Self.getParameters(&self); } }
+    static func getParameters(_ data: UnsafePointer<FunctionTypeMetadata>) -> UnsafeBufferPointer<UnsafePointer<Metadata>> {
+        return UnsafeBufferPointer<UnsafePointer<Metadata>>(start:UnsafePointer<UnsafePointer<Metadata>>(OpaquePointer(data.advanced(by:1))), count:Int(data.pointee.numParameters));
+    }
+    // parameterFlags
+    var parameterFlags: UnsafeBufferPointer<ParameterTypeFlags> { mutating get { return Self.getParameterFlags(&self); } }
+    static func getParameterFlags(_ data: UnsafePointer<FunctionTypeMetadata>) -> UnsafeBufferPointer<ParameterTypeFlags> {
+        let ptr = UnsafeRawPointer(data.advanced(by:1)).advanced(by:Int(data.pointee.numParameters) * MemoryLayout<OpaquePointer>.size).assumingMemoryBound(to:ParameterTypeFlags.self);
+        return UnsafeBufferPointer(start:ptr, count:Int(data.pointee.numParameters));
+    }
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .Function;
+    }
+}
+
+/***
+ * ExistentialTypeMetadata
+ ***/
+struct ExistentialTypeFlags {
+    fileprivate let _value: UInt32;
+}
+
+extension ExistentialTypeFlags {
+    fileprivate static let numWitnessTablesMask: UInt32 = 0x00FFFFFF;
+    fileprivate static let classConstraintMask: UInt32 = 0x80000000;
+    fileprivate static let hasSuperclassMask: UInt32 = 0x40000000;
+    fileprivate static let specialProtocolMask: UInt32 = 0x3F000000;
+    fileprivate static let specialProtocolShift: UInt32 = 24;
+    var numWitnessTables: UInt32 { get { return self._value & Self.numWitnessTablesMask; } }
+    var classConstraint: ProtocolClassConstraint { get { return ProtocolClassConstraint(rawValue:(self._value & Self.classConstraintMask) != 0 ? 1 : 0) ?? .Any; } }
+    var hasSuperclassConstraint: Bool { get { return (self._value & Self.hasSuperclassMask) != 0; } }
+    var specialProtocol: SpecialProtocol { get { return SpecialProtocol(rawValue:UInt8((self._value & Self.specialProtocolMask) >> Self.specialProtocolShift)) ?? .Error; } }
+}
+
+struct ExistentialTypeMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let flags: ExistentialTypeFlags;
+    let numProtocols: UInt32;
+    // ConstTargetMetadataPointer
+    // ProtocolDescriptorRef
+}
+
+extension ExistentialTypeMetadata {
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .Existential;
+    }
+}
+
+/***
+ * MetatypeMetadata
+ ***/
+struct MetatypeMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let instanceType: UnsafePointer<Metadata>;
+}
+
+extension MetatypeMetadata {
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .Metatype;
+    }
+}
+
+/***
+ * ObjCClassWrapperMetadata
+ ***/
+struct ObjCClassWrapperMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let `class`: UnsafePointer<ClassMetadata>;
+}
+
+extension ObjCClassWrapperMetadata {
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .ObjCClassWrapper;
+    }
+}
+
+/***
+ * ExistentialMetatypeMetadata
+ ***/
+struct ExistentialMetatypeMetadata : MetadataInterface {
+    let kindRawValue: UInt;
+    let instanceType: UnsafePointer<ClassMetadata>;
+    let flags: ExistentialTypeFlags;
+}
+
+extension ExistentialMetatypeMetadata {
+    var isObjC: Bool { get { return self.isClassBounded && self.flags.numWitnessTables == 0; } }
+    var isClassBounded: Bool { get { return self.flags.classConstraint == .Class; } }
+    static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return data.pointee.kind == .ExistentialMetatype;
     }
 }

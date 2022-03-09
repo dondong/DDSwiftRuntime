@@ -69,6 +69,11 @@ class DDSwiftRuntime {
     static func getSwiftClassMetadata(_ meta: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(meta); }
     static func getStructMetadata(_ meta: Any) -> UnsafePointer<StructMetadata>? { return getMetadata(meta); }
     static func getEnumMetadata(_ meta: Any) -> UnsafePointer<EnumMetadata>? { return getMetadata(meta); }
+    static func getFunctionTypeMetadata(_ meta: Any) -> UnsafePointer<FunctionTypeMetadata>? { return getMetadata(meta); }
+    static func getExistentialTypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialTypeMetadata>? { return getMetadata(meta); }
+    static func getMetatypeMetadata(_ meta: Any) -> UnsafePointer<MetatypeMetadata>? { return getMetadata(meta); }
+    static func getObjCClassWrapperMetadata(_ meta: Any) -> UnsafePointer<ObjCClassWrapperMetadata>? { return getMetadata(meta); }
+    static func getExistentialMetatypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialMetatypeMetadata>? { return getMetadata(meta); }
     static func getMetadata<T : MetadataInterface>(_ meta: Any) -> UnsafePointer<T>? {
         let ptr : OpaquePointer = Self._covert(meta);
         return Metadata.getFullMetadata(UnsafePointer<Metadata>(ptr));
