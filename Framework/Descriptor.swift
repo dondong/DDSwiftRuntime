@@ -273,6 +273,11 @@ extension TypeContextDescriptorInterface {
     public var name: String { mutating get { return Self.getName(&self); } }
     public static func getName<T : TypeContextDescriptorInterface>(_ data: UnsafePointer<T>) -> String {
         let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2).pointee.pointer!;
+        return String(cString:UnsafePointer<CChar>(ptr));
+    }
+    public var fullName: String  { mutating get { return Self.getFullName(&self); } }
+    public static func getFullName<T : TypeContextDescriptorInterface>(_ data: UnsafePointer<T>) -> String {
+        let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2).pointee.pointer!;
         let namePtr = UnsafePointer<CChar>(ptr);
         guard let parent = self.getParent(data) else { return String(cString:namePtr) }
         let preName = self.getName(UnsafePointer<TypeContextDescriptor>(OpaquePointer(parent)));
