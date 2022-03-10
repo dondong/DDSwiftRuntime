@@ -9,21 +9,21 @@ import Foundation
 import MachO
 import Darwin
 
-class DDSwiftRuntime {
+public class DDSwiftRuntime {
     // MARK: -
     // MARK: macho list
     // type
-    static func getAllSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self._getAllSwiftList("__swift5_types"); }
-    static func getMainSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self._getMainSwiftList("__swift5_types"); }
-    static func getSwiftTypeList(_ imageIndex: UInt32) -> [UnsafePointer<ContextDescriptor>] { return Self._getSwiftList(imageIndex, "__swift5_types"); }
+    public static func getAllSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self._getAllSwiftList("__swift5_types"); }
+    public static func getMainSwiftTypeList() -> [UnsafePointer<ContextDescriptor>] { return Self._getMainSwiftList("__swift5_types"); }
+    public static func getSwiftTypeList(_ imageIndex: UInt32) -> [UnsafePointer<ContextDescriptor>] { return Self._getSwiftList(imageIndex, "__swift5_types"); }
     // protocol conformance
-    static func getAllSwiftProtocolConformanceList() -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self._getAllSwiftList("__swift5_proto"); }
-    static func getMainSwiftProtocolConformanceList() -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self._getMainSwiftList("__swift5_proto"); }
-    static func getSwiftProtocolConformanceList(_ imageIndex: UInt32) -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self._getSwiftList(imageIndex, "__swift5_proto"); }
+    public static func getAllSwiftProtocolConformanceList() -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self._getAllSwiftList("__swift5_proto"); }
+    public static func getMainSwiftProtocolConformanceList() -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self._getMainSwiftList("__swift5_proto"); }
+    public static func getSwiftProtocolConformanceList(_ imageIndex: UInt32) -> [UnsafePointer<ProtocolConformanceDescriptor>] { return Self._getSwiftList(imageIndex, "__swift5_proto"); }
     // protocol
-    static func getAllSwiftProtocolList() -> [UnsafePointer<ProtocolDescriptor>] { return Self._getAllSwiftList("__swift5_protos"); }
-    static func getMainSwiftProtocolList() -> [UnsafePointer<ProtocolDescriptor>] { return Self._getMainSwiftList("__swift5_protos"); }
-    static func getSwiftProtocolList(_ imageIndex: UInt32) -> [UnsafePointer<ProtocolDescriptor>] { return Self._getSwiftList(imageIndex, "__swift5_protos"); }
+    public static func getAllSwiftProtocolList() -> [UnsafePointer<ProtocolDescriptor>] { return Self._getAllSwiftList("__swift5_protos"); }
+    public static func getMainSwiftProtocolList() -> [UnsafePointer<ProtocolDescriptor>] { return Self._getMainSwiftList("__swift5_protos"); }
+    public static func getSwiftProtocolList(_ imageIndex: UInt32) -> [UnsafePointer<ProtocolDescriptor>] { return Self._getSwiftList(imageIndex, "__swift5_protos"); }
     
     fileprivate static func _getAllSwiftList<T>(_ sectname: String) -> [UnsafePointer<T>] {
         var list = [UnsafePointer<T>]();
@@ -61,27 +61,27 @@ class DDSwiftRuntime {
     }
     // MARK: -
     // MARK: Metadata
-    static func getMetadata(classObject: AnyObject) -> UnsafePointer<Metadata> {
+    public static func getMetadata(classObject: AnyObject) -> UnsafePointer<Metadata> {
         let heapObject = unsafeBitCast(classObject, to:UnsafePointer<HeapObject>.self);
         return UnsafePointer<Metadata>(OpaquePointer(heapObject.pointee.metadata));
     }
-    static func getObjcClassMetadata(_ meta: AnyClass) -> UnsafePointer<AnyClassMetadata>? { return getMetadata(meta); }
-    static func getSwiftClassMetadata(_ meta: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(meta); }
-    static func getStructMetadata(_ meta: Any) -> UnsafePointer<StructMetadata>? { return getMetadata(meta); }
-    static func getEnumMetadata(_ meta: Any) -> UnsafePointer<EnumMetadata>? { return getMetadata(meta); }
-    static func getFunctionTypeMetadata(_ meta: Any) -> UnsafePointer<FunctionTypeMetadata>? { return getMetadata(meta); }
-    static func getExistentialTypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialTypeMetadata>? { return getMetadata(meta); }
-    static func getMetatypeMetadata(_ meta: Any) -> UnsafePointer<MetatypeMetadata>? { return getMetadata(meta); }
-    static func getObjCClassWrapperMetadata(_ meta: Any) -> UnsafePointer<ObjCClassWrapperMetadata>? { return getMetadata(meta); }
-    static func getExistentialMetatypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialMetatypeMetadata>? { return getMetadata(meta); }
-    static func getMetadata<T : MetadataInterface>(_ meta: Any) -> UnsafePointer<T>? {
+    public static func getObjcClassMetadata(_ meta: AnyClass) -> UnsafePointer<AnyClassMetadata>? { return getMetadata(meta); }
+    public static func getSwiftClassMetadata(_ meta: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(meta); }
+    public static func getStructMetadata(_ meta: Any) -> UnsafePointer<StructMetadata>? { return getMetadata(meta); }
+    public static func getEnumMetadata(_ meta: Any) -> UnsafePointer<EnumMetadata>? { return getMetadata(meta); }
+    public static func getFunctionTypeMetadata(_ meta: Any) -> UnsafePointer<FunctionTypeMetadata>? { return getMetadata(meta); }
+    public static func getExistentialTypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialTypeMetadata>? { return getMetadata(meta); }
+    public static func getMetatypeMetadata(_ meta: Any) -> UnsafePointer<MetatypeMetadata>? { return getMetadata(meta); }
+    public static func getObjCClassWrapperMetadata(_ meta: Any) -> UnsafePointer<ObjCClassWrapperMetadata>? { return getMetadata(meta); }
+    public static func getExistentialMetatypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialMetatypeMetadata>? { return getMetadata(meta); }
+    public static func getMetadata<T : MetadataInterface>(_ meta: Any) -> UnsafePointer<T>? {
         let ptr : OpaquePointer = Self._covert(meta);
         return Metadata.getFullMetadata(UnsafePointer<Metadata>(ptr));
     }
     
     // MARK: -
     // MARK: protocol
-    static func getSwiftProtocolConformances(_ meta: Any) -> [UnsafePointer<ProtocolConformanceDescriptor>] {
+    public static func getSwiftProtocolConformances(_ meta: Any) -> [UnsafePointer<ProtocolConformanceDescriptor>] {
         let metaPtr : UnsafePointer<Metadata> = Self._covert(meta);
         var type: UnsafePointer<ContextDescriptor>! = nil;
         if (metaPtr.pointee.kind == .Class) {
