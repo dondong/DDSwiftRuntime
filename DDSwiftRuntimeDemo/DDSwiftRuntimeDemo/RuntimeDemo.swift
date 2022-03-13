@@ -43,7 +43,7 @@ func printProtocolConformances() {
     print("");
 }
 
-fileprivate func _printProtocolConformance(_ pro: Any) {
+fileprivate func _printProtocolConformance(_ pro: Any.Type) {
     let protocols = DDSwiftRuntime.getSwiftProtocolConformances(pro);
     for i in 0..<protocols.count {
         let p = ProtocolConformanceDescriptor.getProtocolDescriptor(protocols[i]);
