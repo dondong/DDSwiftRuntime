@@ -110,3 +110,25 @@ public class DDSwiftRuntime {
         return UnsafeRawPointer.init(tmpValPtr).load(as:T.self);
     }
 }
+//
+//class DDInvocation {
+//    var target: AnyObject;
+//    var parameters: [Any];
+//    var functionPtr: FunctionPointer;
+//    var returnVal: Any?;
+//    init?(target: AnyObject, parameters: [Any], functionName: String) {
+//        let ptr = unsafeBitCast(target, to:UnsafePointer<HeapObject>.self);
+//        let metadata = UnsafePointer<ClassMetadata>(OpaquePointer(ptr.pointee.metadata));
+//        if let fun = metadata.pointee.getFunction(functionName) {
+//            self.target = target;
+//            self.parameters = parameters;
+//            self.functionPtr = fun;
+//        } else {
+//            return nil;
+//        }
+//    }
+//    
+//    func invoke() {
+//        
+//    }
+//}

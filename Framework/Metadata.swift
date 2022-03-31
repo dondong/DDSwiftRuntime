@@ -204,9 +204,84 @@ extension HeapMetadataInterface {
 /***
  * HeapObject
  ***/
+public struct RefCounts {
+    fileprivate let _value: UInt;
+}
+
+extension RefCounts {
+    fileprivate static let PureSwiftDeallocShift: UInt = 0;
+    fileprivate static let PureSwiftDeallocBitCount: UInt = 1;
+    fileprivate static let PureSwiftDeallocMask: UInt = (((UInt(1)<<Self.PureSwiftDeallocBitCount) - 1) << Self.PureSwiftDeallocShift);
+    fileprivate static let UnownedRefCountShift: UInt = Self.PureSwiftDeallocShift + Self.PureSwiftDeallocBitCount;
+    fileprivate static let UnownedRefCountBitCount: UInt = 31;
+    fileprivate static let UnownedRefCountMask = (((UInt(1)<<Self.UnownedRefCountBitCount) - 1) << Self.UnownedRefCountShift);
+    fileprivate static let IsImmortalShift: UInt = 0;
+    fileprivate static let IsImmortalBitCount: UInt = 32;
+    fileprivate static let IsImmortalMask: UInt = (((UInt(1)<<Self.IsImmortalBitCount) - 1) << Self.IsImmortalShift);
+    fileprivate static let IsDeinitingShift: UInt = Self.UnownedRefCountShift + Self.UnownedRefCountBitCount;
+    fileprivate static let IsDeinitingBitCount: UInt = 1;
+    fileprivate static let IsDeinitingMask: UInt =  (((UInt(1)<<Self.IsDeinitingBitCount) - 1) << Self.IsDeinitingShift);
+    fileprivate static let StrongExtraRefCountShift: UInt = Self.IsDeinitingShift + Self.IsDeinitingBitCount;
+    fileprivate static let StrongExtraRefCountBitCount: UInt = 30;
+    fileprivate static let StrongExtraRefCountMask: UInt = (((UInt(1)<<Self.StrongExtraRefCountBitCount) - 1) << Self.StrongExtraRefCountShift);
+    fileprivate static let UseSlowRCShift: UInt = Self.StrongExtraRefCountShift + Self.StrongExtraRefCountBitCount;
+    fileprivate static let UseSlowRCBitCount: UInt = 1;
+    fileprivate static let UseSlowRCMask: UInt = (((UInt(1)<<Self.UseSlowRCBitCount) - 1) << Self.UseSlowRCShift);
+    fileprivate static let SideTableShift: UInt = 0;
+    fileprivate static let SideTableBitCount: UInt = 62;
+    fileprivate static let SideTableMask: UInt = (((UInt(1)<<Self.SideTableBitCount) - 1) << Self.SideTableShift);
+    fileprivate static let SideTableUnusedLowBits: UInt = 3;
+    fileprivate static let SideTableMarkShift: UInt = Self.SideTableBitCount;
+    fileprivate static let SideTableMarkBitCount: UInt = 1;
+    fileprivate static let SideTableMarkMask: UInt = (((UInt(1)<<Self.SideTableMarkBitCount) - 1) << Self.SideTableMarkShift);
+    private var useSlowRC: Bool { get { return 0 != ((self._value & Self.UseSlowRCMask) >> Self.UseSlowRCShift); } }
+    private func isImmortal(checkSlowRCBit: Bool) -> Bool {
+        if (checkSlowRCBit) {
+            return (((self._value & Self.IsImmortalMask) >> Self.IsImmortalShift) == Self.IsImmortalMask) && self.useSlowRC;
+        } else {
+            return (((self._value & Self.IsImmortalMask) >> Self.IsImmortalShift) == Self.IsImmortalMask);
+        }
+    }
+    private var strongExtraRefCount: UInt32 { get { return UInt32((self._value & Self.StrongExtraRefCountMask) >> Self.StrongExtraRefCountShift); } }
+    private var hasSideTable: Bool { get { return self.useSlowRC && !self.isImmortal(checkSlowRCBit:false); } }
+    private var sideTable: UnsafePointer<HeapObjectSideTableEntry> {
+        get {
+            let addr: UInt = ((self._value & Self.SideTableMask) >> Self.SideTableShift) << Self.SideTableUnusedLowBits;
+            return UnsafePointer<HeapObjectSideTableEntry>(OpaquePointer(bitPattern:addr)!);
+        }
+    }
+    // public
+    public var pureSwiftDeallocation: Bool { get { return (0 != ((self._value & Self.PureSwiftDeallocMask) >> Self.PureSwiftDeallocShift)) && (0 == ((self._value & Self.UseSlowRCMask) >> Self.UseSlowRCShift)); } }
+    public var count: UInt32 {
+        get {
+            if (self.hasSideTable) {
+                return self.sideTable.pointee.refCounts.count;
+            } else {
+                return self.strongExtraRefCount + 1;
+            }
+        }
+    }
+    public var isDeiniting: Bool {
+        get {
+            if (self.hasSideTable) {
+                return self.sideTable.pointee.refCounts.isDeiniting;
+            } else {
+                return 0 != ((self._value & Self.IsDeinitingMask) >> Self.IsDeinitingShift);
+            }
+        }
+    }
+}
+
 public struct HeapObject {
     public let metadata: UnsafePointer<HeapMetadata>;
-    public let refCounts: size_t;
+    public let refCounts: RefCounts;
+}
+
+fileprivate struct HeapObjectSideTableEntry {
+    public let object: UnsafePointer<HeapObject>;
+    fileprivate let __alignas: UInt32;
+    public let refCounts: RefCounts;
+    public let weakBits: UInt32;
 }
 
 public struct MetadataTrailingFlags {
