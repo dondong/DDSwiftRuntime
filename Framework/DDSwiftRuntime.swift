@@ -65,6 +65,12 @@ public class DDSwiftRuntime {
         let heapObject = unsafeBitCast(classObject, to:UnsafePointer<HeapObject>.self);
         return UnsafePointer<Metadata>(OpaquePointer(heapObject.pointee.metadata));
     }
+    public static func getMetadata(anyValue: Any) -> UnsafePointer<Metadata> {
+        var tmpVal = anyValue;
+        let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
+        let ptr = UnsafeRawPointer(tmpValPtr).advanced(by:MemoryLayout<OpaquePointer>.size * 3).load(as:OpaquePointer.self);
+        return UnsafePointer<Metadata>(ptr);
+    }
     public static func getObjcClassMetadata(_ meta: AnyClass) -> UnsafePointer<AnyClassMetadata>? { return getMetadata(meta); }
     public static func getSwiftClassMetadata(_ meta: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(meta); }
     public static func getStructMetadata(_ meta: Any) -> UnsafePointer<StructMetadata>? { return getMetadata(meta); }
@@ -75,14 +81,18 @@ public class DDSwiftRuntime {
     public static func getObjCClassWrapperMetadata(_ meta: Any) -> UnsafePointer<ObjCClassWrapperMetadata>? { return getMetadata(meta); }
     public static func getExistentialMetatypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialMetatypeMetadata>? { return getMetadata(meta); }
     public static func getMetadata<T : MetadataInterface>(_ meta: Any) -> UnsafePointer<T>? {
-        let ptr : OpaquePointer = Self._covert(meta);
+        var tmpVal = meta;
+        let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
+        let ptr = UnsafeRawPointer(tmpValPtr).load(as:OpaquePointer.self);
         return Metadata.getFullMetadata(UnsafePointer<Metadata>(ptr));
     }
     
     // MARK: -
     // MARK: protocol
     public static func getSwiftProtocolConformances(_ meta: Any) -> [UnsafePointer<ProtocolConformanceDescriptor>] {
-        let metaPtr : UnsafePointer<Metadata> = Self._covert(meta);
+        var tmpVal = meta;
+        let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
+        let metaPtr = UnsafeRawPointer(tmpValPtr).load(as:UnsafePointer<Metadata>.self);
         var type: UnsafePointer<ContextDescriptor>! = nil;
         if (metaPtr.pointee.kind == .Class) {
             type = UnsafePointer<ContextDescriptor>(OpaquePointer(UnsafePointer<ClassMetadata>(OpaquePointer(metaPtr)).pointee.description));
@@ -104,11 +114,6 @@ public class DDSwiftRuntime {
     }
     // MARK: -
     // MARK: private
-    fileprivate static func _covert<T>(_ val: Any) -> T {
-        var tmpVal = val;
-        let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
-        return UnsafeRawPointer.init(tmpValPtr).load(as:T.self);
-    }
 }
 //
 //class DDInvocation {
