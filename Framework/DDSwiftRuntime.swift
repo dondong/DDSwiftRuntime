@@ -71,19 +71,19 @@ public class DDSwiftRuntime {
         let ptr = UnsafeRawPointer(tmpValPtr).advanced(by:MemoryLayout<OpaquePointer>.size * 3).load(as:OpaquePointer.self);
         return UnsafePointer<Metadata>(ptr);
     }
-    public static func getObjcClassMetadata(_ meta: AnyClass) -> UnsafePointer<AnyClassMetadata>? { return getMetadata(meta); }
-    public static func getSwiftClassMetadata(_ meta: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(meta); }
-    public static func getStructMetadata(_ meta: Any) -> UnsafePointer<StructMetadata>? { return getMetadata(meta); }
-    public static func getEnumMetadata(_ meta: Any) -> UnsafePointer<EnumMetadata>? { return getMetadata(meta); }
-    public static func getFunctionTypeMetadata(_ meta: Any) -> UnsafePointer<FunctionTypeMetadata>? { return getMetadata(meta); }
-    public static func getExistentialTypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialTypeMetadata>? { return getMetadata(meta); }
-    public static func getMetatypeMetadata(_ meta: Any) -> UnsafePointer<MetatypeMetadata>? { return getMetadata(meta); }
-    public static func getObjCClassWrapperMetadata(_ meta: Any) -> UnsafePointer<ObjCClassWrapperMetadata>? { return getMetadata(meta); }
-    public static func getExistentialMetatypeMetadata(_ meta: Any) -> UnsafePointer<ExistentialMetatypeMetadata>? { return getMetadata(meta); }
-    public static func getMetadata<T : MetadataInterface>(_ meta: Any) -> UnsafePointer<T>? {
-        var tmpVal = meta;
-        let tmpValPtr = withUnsafePointer(to: &tmpVal) { $0 };
-        let ptr = UnsafeRawPointer(tmpValPtr).load(as:OpaquePointer.self);
+    public static func getObjcClassMetadata(_ type: AnyClass) -> UnsafePointer<AnyClassMetadata>? { return getMetadata(type); }
+    public static func getSwiftClassMetadata(_ type: AnyClass) -> UnsafePointer<ClassMetadata>? { return getMetadata(type); }
+    public static func getStructMetadata(_ type: Any.Type) -> UnsafePointer<StructMetadata>? { return getMetadata(type); }
+    public static func getEnumMetadata(_ type: Any.Type) -> UnsafePointer<EnumMetadata>? { return getMetadata(type); }
+    public static func getFunctionTypeMetadata(_ type: Any.Type) -> UnsafePointer<FunctionTypeMetadata>? { return getMetadata(type); }
+    public static func getExistentialTypeMetadata(_ type: Any.Type) -> UnsafePointer<ExistentialTypeMetadata>? { return getMetadata(type); }
+    public static func getMetatypeMetadata(_ type: Any.Type) -> UnsafePointer<MetatypeMetadata>? { return getMetadata(type); }
+    public static func getObjCClassWrapperMetadata(_ type: Any.Type) -> UnsafePointer<ObjCClassWrapperMetadata>? { return getMetadata(type); }
+    public static func getExistentialMetatypeMetadata(_ type: Any.Type) -> UnsafePointer<ExistentialMetatypeMetadata>? { return getMetadata(type); }
+    public static func getMetadata<T : MetadataInterface>(_ type: Any.Type) -> UnsafePointer<T>? {
+        var tmpType = type;
+        let tmpTypePtr = withUnsafePointer(to: &tmpType) { $0 };
+        let ptr = UnsafeRawPointer(tmpTypePtr).load(as:OpaquePointer.self);
         return Metadata.getFullMetadata(UnsafePointer<Metadata>(ptr));
     }
     
