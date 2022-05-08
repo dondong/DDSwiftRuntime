@@ -46,33 +46,33 @@ fileprivate let FAST_DATA_MASK: UInt = 0x00007ffffffffff8;
 fileprivate let FlagMask: UInt32 = 0xffff0003;
 fileprivate let smallMethodListFlag: UInt32 = 0x80000000;
 
-struct entsize_list_tt {
-    let entsizeAndFlags: UInt32;
-    let count: UInt32;
-    let first: uintptr_t;
+public struct entsize_list_tt {
+    public let entsizeAndFlags: UInt32;
+    public let count: UInt32;
+    public let first: uintptr_t;
 };
 
-struct protocol_list_t {
-    let count: UInt64;
-    let first: uintptr_t;
+public struct protocol_list_t {
+    public let count: UInt64;
+    public let first: uintptr_t;
 };
 
-struct class_ro_t {
-    let flags: UInt32;
-    let instanceStart: UInt32;
-    let instacneSize: UInt32;
-    let reserved: UInt32;
-    let ivarLayout: UnsafePointer<UInt8>;
-    let name: UnsafePointer<CChar>;
-    let baseMethodList: UnsafePointer<entsize_list_tt>;
-    let baseProtocols: UnsafePointer<protocol_list_t>;
-    let ivars: UnsafePointer<entsize_list_tt>;
-    let weakIvarLayout: UnsafePointer<uintptr_t>;
-    let baseProperties: UnsafePointer<entsize_list_tt>;
+public struct class_ro_t {
+    public let flags: UInt32;
+    public let instanceStart: UInt32;
+    public let instacneSize: UInt32;
+    public let reserved: UInt32;
+    public let ivarLayout: UnsafePointer<UInt8>;
+    public let name: UnsafePointer<CChar>;
+    public let baseMethodList: UnsafePointer<entsize_list_tt>;
+    public let baseProtocols: UnsafePointer<protocol_list_t>;
+    public let ivars: UnsafePointer<entsize_list_tt>;
+    public let weakIvarLayout: UnsafePointer<uintptr_t>;
+    public let baseProperties: UnsafePointer<entsize_list_tt>;
 }
 
 extension class_ro_t {
-    var methodArray: [Method] {
+    public var methodArray: [Method] {
         get {
             var ret = [Method]();
             let entsize = self.baseMethodList.pointee.entsizeAndFlags & ~FlagMask;
@@ -89,15 +89,15 @@ extension class_ro_t {
     }
 }
 
-struct class_rw_t {
-    let flags: UInt32;
-    let witness: UInt32;
-//    let index: UInt16;
-    let ro: uintptr_t;
+public struct class_rw_t {
+    public let flags: UInt32;
+    public let witness: UInt32;
+//    public let index: UInt16;
+    public let ro: uintptr_t;
 }
 
 extension AnyClassMetadataInterface {
-    var ro: UnsafePointer<class_ro_t> {
+    public var ro: UnsafePointer<class_ro_t> {
         get {
             let ptr = UnsafePointer<UInt32>(bitPattern:self.data & FAST_DATA_MASK)!;
             if ((ptr.pointee & RW_REALIZED) > 0) {
