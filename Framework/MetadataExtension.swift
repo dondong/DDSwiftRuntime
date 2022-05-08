@@ -75,14 +75,16 @@ extension class_ro_t {
     public var methodArray: [Method] {
         get {
             var ret = [Method]();
-            let entsize = self.baseMethodList.pointee.entsizeAndFlags & ~FlagMask;
-            let flags = self.baseMethodList.pointee.entsizeAndFlags & FlagMask;
-            let fixOffset: Int = (flags & smallMethodListFlag) > 0 ? 1 : 0;   // no idea about this offset
-            let ptr = UnsafeRawPointer(self.baseMethodList).advanced(by:MemoryLayout<UInt32>.size * 2 + fixOffset);
-            print(self.baseMethodList)
-            print(ptr)
-            for i in 0..<self.baseMethodList.pointee.count {
-                ret.append(Method(ptr.advanced(by:Int(i * entsize))));
+            if (UInt(bitPattern:self.baseMethodList) != 0) {
+                let entsize = self.baseMethodList.pointee.entsizeAndFlags & ~FlagMask;
+                let flags = self.baseMethodList.pointee.entsizeAndFlags & FlagMask;
+                let fixOffset: Int = (flags & smallMethodListFlag) > 0 ? 1 : 0;   // no idea about this offset
+                let ptr = UnsafeRawPointer(self.baseMethodList).advanced(by:MemoryLayout<UInt32>.size * 2 + fixOffset);
+                print(self.baseMethodList)
+                print(ptr)
+                for i in 0..<self.baseMethodList.pointee.count {
+                    ret.append(Method(ptr.advanced(by:Int(i * entsize))));
+                }
             }
             return ret;
         }
