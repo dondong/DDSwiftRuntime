@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 extension Metadata {
     public static func getFullMetadata<T : MetadataInterface>(_ data: UnsafePointer<Metadata>) -> UnsafePointer<T>? {
@@ -13,6 +14,102 @@ extension Metadata {
             return UnsafePointer<T>(OpaquePointer(data));
         } else {
             return nil;
+        }
+    }
+}
+
+fileprivate let RO_META: UInt32 = 1<<0;
+fileprivate let RO_ROOT: UInt32 = 1<<1;
+fileprivate let RO_HAS_CXX_STRUCTORS: UInt32 = 1<<2;
+fileprivate let RO_HIDDEN: UInt32 = 1<<4;
+fileprivate let RO_EXCEPTION: UInt32 = 1<<5;
+fileprivate let RO_HAS_SWIFT_INITIALIZER: UInt32 = 1<<6;
+fileprivate let RO_IS_ARC: UInt32 = 1<<7;
+fileprivate let RO_HAS_CXX_DTOR_ONLY: UInt32 = 1<<8;
+fileprivate let RO_HAS_WEAK_WITHOUT_ARC: UInt32 = 1<<9;
+fileprivate let RO_FORBIDS_ASSOCIATED_OBJECTS: UInt32 = 1<<10;
+fileprivate let RO_FROM_BUNDLE: UInt32 = 1<<29;
+fileprivate let RO_FUTURE: UInt32 = 1<<30;
+fileprivate let RO_REALIZED: UInt32 = 1<<31;
+fileprivate let RW_REALIZED: UInt32 = 1<<31;
+fileprivate let RW_FUTURE: UInt32 = 1<<30;
+fileprivate let RW_INITIALIZED: UInt32 = 1<<29;
+fileprivate let RW_INITIALIZING: UInt32 = 1<<28;
+fileprivate let RW_COPIED_RO: UInt32 = 1<<27;
+fileprivate let RW_CONSTRUCTING: UInt32 = 1<<26;
+fileprivate let RW_CONSTRUCTED: UInt32 = 1<<25;
+fileprivate let RW_LOADED: UInt32 = 1<<23;
+fileprivate let RW_HAS_INSTANCE_SPECIFIC_LAYOUT: UInt32 = 1<<21;
+fileprivate let RW_FORBIDS_ASSOCIATED_OBJECTS: UInt32 = 1<<20;
+fileprivate let RW_REALIZING: UInt32 = 1<<19;
+fileprivate let FAST_DATA_MASK: UInt = 0x00007ffffffffff8;
+fileprivate let FlagMask: UInt32 = 0xffff0003;
+fileprivate let smallMethodListFlag: UInt32 = 0x80000000;
+
+struct entsize_list_tt {
+    let entsizeAndFlags: UInt32;
+    let count: UInt32;
+    let first: uintptr_t;
+};
+
+struct protocol_list_t {
+    let count: UInt64;
+    let first: uintptr_t;
+};
+
+struct class_ro_t {
+    let flags: UInt32;
+    let instanceStart: UInt32;
+    let instacneSize: UInt32;
+    let reserved: UInt32;
+    let ivarLayout: UnsafePointer<UInt8>;
+    let name: UnsafePointer<CChar>;
+    let baseMethodList: UnsafePointer<entsize_list_tt>;
+    let baseProtocols: UnsafePointer<protocol_list_t>;
+    let ivars: UnsafePointer<entsize_list_tt>;
+    let weakIvarLayout: UnsafePointer<uintptr_t>;
+    let baseProperties: UnsafePointer<entsize_list_tt>;
+}
+
+extension class_ro_t {
+    var methodArray: [Method] {
+        get {
+            var ret = [Method]();
+            let entsize = self.baseMethodList.pointee.entsizeAndFlags & ~FlagMask;
+            let flags = self.baseMethodList.pointee.entsizeAndFlags & FlagMask;
+            let fixOffset: Int = (flags & smallMethodListFlag) > 0 ? 1 : 0;   // no idea about this offset
+            let ptr = UnsafeRawPointer(self.baseMethodList).advanced(by:MemoryLayout<UInt32>.size * 2 + fixOffset);
+            print(self.baseMethodList)
+            print(ptr)
+            for i in 0..<self.baseMethodList.pointee.count {
+                ret.append(Method(ptr.advanced(by:Int(i * entsize))));
+            }
+            return ret;
+        }
+    }
+}
+
+struct class_rw_t {
+    let flags: UInt32;
+    let witness: UInt32;
+//    let index: UInt16;
+    let ro: uintptr_t;
+}
+
+extension AnyClassMetadataInterface {
+    var ro: UnsafePointer<class_ro_t> {
+        get {
+            let ptr = UnsafePointer<UInt32>(bitPattern:self.data & FAST_DATA_MASK)!;
+            if ((ptr.pointee & RW_REALIZED) > 0) {
+                let rw = UnsafePointer<class_rw_t>(OpaquePointer(ptr));
+                if ((rw.pointee.ro & 1) > 0) {
+                    return UnsafePointer<class_ro_t>(UnsafePointer<OpaquePointer>(bitPattern:rw.pointee.ro ^ 1)!.pointee);
+                } else {
+                    return UnsafePointer<class_ro_t>(bitPattern:rw.pointee.ro)!;
+                }
+            } else {
+                return UnsafePointer<class_ro_t>(OpaquePointer(ptr));
+            }
         }
     }
 }

@@ -456,9 +456,9 @@ extension EnumMetadata {
 // MARK: ClassMetadata
 public protocol AnyClassMetadataInterface : HeapMetadataInterface {
     var superclass: UnsafePointer<AnyClassMetadata> { get };
-    var cache0: UInt { get };
-    var cache1: UInt { get };
-    var data: UInt { get };
+    var cache0: uintptr_t { get };
+    var cache1: uintptr_t { get };
+    var data: uintptr_t { get };
 }
 extension AnyClassMetadataInterface {
     // name
@@ -480,7 +480,7 @@ public struct AnyClassMetadata : AnyClassMetadataInterface {
     public let superclass: UnsafePointer<AnyClassMetadata>;
     public let cache0: uintptr_t;
     public let cache1: uintptr_t;
-    public let data: UInt;
+    public let data: uintptr_t;
 };
 
 extension AnyClassMetadata {
@@ -503,9 +503,9 @@ public enum ClassFlags : UInt32 {
 public struct ClassMetadata : AnyClassMetadataInterface {
     public let kindRawValue: UInt;
     public let superclass: UnsafePointer<AnyClassMetadata>;
-    public let cache0: UInt;
-    public let cache1: UInt;
-    public let data: UInt;
+    public let cache0: uintptr_t;
+    public let cache1: uintptr_t;
+    public let data: uintptr_t;
     fileprivate let _flags: UInt32;
     public let instanceAddressPoint: UInt32;
     public let instanceSize: UInt32;
