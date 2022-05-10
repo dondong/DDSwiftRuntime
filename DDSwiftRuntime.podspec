@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name     = 'DDSwiftRuntime'
-  s.version  = '0.0.6'
+  s.version  = '0.0.7'
   s.license  = 'MIT'
   s.summary  = 'A description of DDSwiftRuntime.'
   s.homepage = 'https://github.com/dondong/DDSwiftRuntime'

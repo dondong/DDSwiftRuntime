@@ -116,6 +116,23 @@ extension AnyClassMetadataInterface {
     }
 }
 
+extension ClassMetadata {
+    public var vtableRanges: [NSRange] { mutating get { return Self.getVtableRanges(&self); } }
+    public static func getVtableRanges(_ data: UnsafePointer<ClassMetadata>) -> [NSRange] {
+        var list = [NSRange]();
+        var ptr = UnsafePointer<AnyClassMetadata>(OpaquePointer(data));
+        while (ptr.pointee.isTypeMetadata) {
+            let des = UnsafeMutablePointer<ClassDescriptor>(mutating:UnsafePointer<ClassMetadata>(OpaquePointer(ptr)).pointee.description);
+            if (des.pointee.hasVTable) {
+                let offset = Int(des.pointee.vTableOffset) * MemoryLayout<OpaquePointer>.size;
+                list.append(NSRange(location:offset, length:Int(des.pointee.vTableSize)));
+            }
+            ptr = ptr.pointee.superclass;
+        }
+        return list;
+    }
+}
+
 //extension ClassMetadata {
 //    public func getFunction(_ name: String) -> (functionName: String, parameters: [String], returnVal: String, impl: OpaquePointer)? {
 //        let des = UnsafeMutablePointer<ClassDescriptor>(mutating:self.description);
