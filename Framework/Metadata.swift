@@ -155,6 +155,21 @@ extension HeapMetadata {
 }
 
 /***
+ * HeapLocalVariableMetadata
+ ***/
+public struct HeapLocalVariableMetadata : HeapMetadataInterface {
+    public let kindRawValue: UInt;
+    public let offsetToFirstCapture: UInt32;
+    public let captureDescription: UnsafePointer<CChar>;
+}
+
+extension HeapLocalVariableMetadata {
+    public static func classof(_ data: UnsafePointer<Metadata>) -> Bool {
+        return (data.pointee.kind == .HeapLocalVariable);
+    }
+}
+
+/***
  *TupleTypeMetadata
  ***/
 public struct TupleTypeMetadata : MetadataInterface {
