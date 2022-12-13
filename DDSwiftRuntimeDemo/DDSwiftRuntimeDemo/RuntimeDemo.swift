@@ -305,7 +305,7 @@ fileprivate func printTypeContextDescriptor(_ d: UnsafePointer<TypeContextDescri
     let des = UnsafeMutablePointer<TypeContextDescriptor>(OpaquePointer(d));
     print("name:", des.pointee.name);
     print("accessFunction:", String(describing:des.pointee.accessFunction?.functionName));
-    print("fieldDescriptor:", String(describing:des.pointee.fieldDescriptor?.functionName));
+    print("fieldDescriptor:", FieldDescriptor.getMangledTypeName(des.pointee.fieldDescriptor!)!);
 }
 
 fileprivate func printClassDescriptor(_ d: UnsafePointer<ClassDescriptor>) {

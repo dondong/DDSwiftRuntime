@@ -226,6 +226,7 @@ extension ProtocolRequirement {
     }
 }
 
+
 // MARK: -
 // MARK: TypeContext
 /***
@@ -293,10 +294,10 @@ extension TypeContextDescriptorInterface {
         }
     }
     // fieldDescriptor
-    public var fieldDescriptor: FunctionPointer? { mutating get { return Self.getFieldDescriptor(&self); } }
-    public static func getFieldDescriptor<T : TypeContextDescriptorInterface>(_ data: UnsafePointer<T>) -> FunctionPointer? {
+    public var fieldDescriptor: UnsafePointer<FieldDescriptor>? { mutating get { return Self.getFieldDescriptor(&self); } }
+    public static func getFieldDescriptor<T : TypeContextDescriptorInterface>(_ data: UnsafePointer<T>) -> UnsafePointer<FieldDescriptor>? {
         if let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:4).pointee.pointer {
-            return Optional(FunctionPointer(ptr));
+            return Optional(UnsafePointer<FieldDescriptor>(ptr));
         } else {
             return nil;
         }
@@ -335,6 +336,102 @@ extension TypeContextDescriptorInterface {
             } else {
                 return nil;
             }
+        } else {
+            return nil;
+        }
+    }
+}
+
+public struct FieldRecordFlags {
+    fileprivate static let IsIndirectCase: UInt32 = 0x1;  // Is this an indirect enum case?
+    fileprivate static let IsVar: UInt32 = 0x2;   // Is this a mutable `var` property?
+    fileprivate static let IsArtificial: UInt32 = 0x4;  // Is this an artificial field?
+    fileprivate let _data: UInt32;
+}
+
+extension FieldRecordFlags {
+    public var isIndirectCase: Bool { get { return (self._data & Self.IsIndirectCase) == Self.IsIndirectCase; } }
+    public var isVar: Bool { get { return (self._data & Self.IsVar) == Self.IsVar; } }
+    public var isArtificial: Bool { get { return (self._data & Self.IsArtificial) == Self.IsArtificial; } }
+}
+
+public struct FieldRecord {
+    public let flags: FieldRecordFlags;
+    fileprivate var _mangledTypeName: RelativeDirectPointer;
+    fileprivate var _fieldName: RelativeDirectPointer;
+}
+
+extension FieldRecord {
+    public var mangledTypeName: String? { mutating get { return Self.getMangledTypeName(&self); } }
+    public static func getMangledTypeName(_ data: UnsafePointer<FieldRecord>) -> String? {
+        if let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:1).pointee.pointer {
+            return String(cString:UnsafePointer<CChar>(ptr));
+        } else {
+            return nil;
+        }
+    }
+    // fieldName
+    public var fieldName: String? { mutating get { return Self.getFieldName(&self); } }
+    public static func getFieldName(_ data: UnsafePointer<FieldRecord>) -> String? {
+        if let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:2).pointee.pointer {
+            return String(cString:UnsafePointer<CChar>(ptr));
+        } else {
+            return nil;
+        }
+    }
+}
+
+public struct FieldDescriptorKind {
+    fileprivate let value: UInt16;
+}
+
+extension FieldDescriptorKind {
+    fileprivate static let Struct: UInt16 = 0;
+    fileprivate static let Class: UInt16 = 1;
+    fileprivate static let Enum: UInt16 = 2;
+    fileprivate static let MultiPayloadEnum: UInt16 = 3;
+    fileprivate static let ProtocolValue: UInt16 = 4;
+    fileprivate static let ClassProtocol: UInt16 = 5;
+    fileprivate static let ObjCProtocol: UInt16 = 6;
+    fileprivate static let ObjCClass: UInt16 = 7;
+    public var isEnum: Bool { get { return self.value == Self.Enum || self.value == Self.MultiPayloadEnum; } }
+    public var isClass: Bool { get { return self.value == Self.Class || self.value == Self.ObjCClass; } }
+    public var isProtocol: Bool { get { return self.value == Self.ProtocolValue || self.value == Self.ClassProtocol || self.value == Self.ObjCProtocol; } }
+    public var isStruct: Bool { get { return self.value == Self.Struct; } }
+}
+
+public struct FieldDescriptor {
+    fileprivate var _mangledTypeName: RelativeDirectPointer;
+    fileprivate var _superclass: RelativeDirectPointer;
+    public let fieldDescriptorKind: FieldDescriptorKind;
+    public let fieldRecordSize: UInt16;
+    public let numFields: UInt32;
+}
+
+extension FieldDescriptor {
+    // mangledTypeName
+    public var mangledTypeName: String? { mutating get { return Self.getMangledTypeName(&self); } }
+    public static func getMangledTypeName(_ data: UnsafePointer<FieldDescriptor>) -> String? {
+        if let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).pointee.pointer {
+            return String(cString:UnsafePointer<CChar>(ptr));
+        } else {
+            return nil;
+        }
+    }
+    // superclass
+    public var superclass: String? { mutating get { return Self.getSuperclass(&self); } }
+    public static func getSuperclass(_ data: UnsafePointer<FieldDescriptor>) -> String? {
+        if let ptr = UnsafeMutablePointer<RelativeDirectPointer>(OpaquePointer(data)).advanced(by:1).pointee.pointer {
+            return String(cString:UnsafePointer<CChar>(ptr));
+        } else {
+            return nil;
+        }
+    }
+    // fields
+    public var fields: UnsafeBufferPointer<FieldRecord>? { mutating get { return Self.getFields(&self); } }
+    public static func getFields(_ data: UnsafePointer<FieldDescriptor>) -> UnsafeBufferPointer<FieldRecord>? {
+        if (data.pointee.numFields > 0) {
+            return UnsafeBufferPointer<FieldRecord>(start:UnsafePointer<FieldRecord>(OpaquePointer(data.advanced(by:1))), count:Int(data.pointee.numFields));
         } else {
             return nil;
         }
@@ -579,7 +676,7 @@ extension EnumDescriptor {
     }
     public var foreignMetadataInitialization: UnsafePointer<ForeignMetadataInitialization>? { mutating get { return Self.getForeignMetadataInitialization(&self); } }
     public static func getForeignMetadataInitialization(_ data: UnsafePointer<EnumDescriptor>) -> UnsafePointer<ForeignMetadataInitialization>? {
-        if (data.pointee.hasSingletonMetadataInitialization) {
+        if (data.pointee.hasForeignMetadataInitialization) {
             let offset = Self._getForeignMetadataInitializationOffset(data);
             return Optional(UnsafeRawPointer(data.advanced(by:1)).advanced(by:offset).assumingMemoryBound(to:ForeignMetadataInitialization.self));
         } else {
@@ -588,7 +685,7 @@ extension EnumDescriptor {
     }
     // singletonMetadataInitialization
     fileprivate static func _getSingletonMetadataInitializationOffset(_ data: UnsafePointer<EnumDescriptor>) -> Int {
-        if (data.pointee.hasSingletonMetadataInitialization) {
+        if (data.pointee.hasForeignMetadataInitialization) {
             return MemoryLayout<ForeignMetadataInitialization>.size;
         }
         return 0;
